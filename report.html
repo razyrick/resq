@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Incident - RES-Q LAGUNA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="css/report.css">
+</head>
+<body class="bg-gray-50">
+    <!-- Main Content -->
+    <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="mb-8">
+            <div class="flex items-center gap-3 mb-2">
+                <a href="index.html" class="w-12 h-12 rounded-lg flex items-center justify-center">
+                    <img src="../logo.jpg" alt="icon" class="w-10 h-10 object-contain" />
+                </a>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Report Incident</h1>
+                    <p class="text-sm text-gray-500">Help us respond faster by providing accurate details</p>
+                </div>
+            </div>
+        </div>
+
+        <form id="reportForm" class="space-y-6">
+            <!-- Location Section -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Location</h2>
+                
+                <div class="mb-4">
+                    <div id="reportMap" class="h-64 border border-gray-200 rounded-lg"></div>
+                    <p class="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                        <i class="fas fa-info-circle text-gray-400"></i>
+                        Drag the pin to adjust the exact location
+                    </p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                    <input type="text" id="address" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Auto-detected address" readonly>
+                </div>
+            </div>
+
+            <!-- Description Section -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Incident Description</h2>
+                
+                <textarea id="description" rows="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" placeholder="Describe what happened in detail..." required></textarea>
+                
+                <p class="text-xs text-gray-500 mt-2">
+                    <span id="charCount">0</span>/3000 characters
+                </p>
+
+                <!-- AI Analysis Button -->
+                <button 
+                    type="button" 
+                    id="analyzeBtn"
+                    class="mt-4 w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-colors shadow-lg shadow-blue-500/30"
+                >
+                    <i class="fas fa-robot mr-2"></i>
+                    Analyze Incident
+                </button>
+            </div>
+
+            <!-- AI Analysis Results Section (Hidden by default) -->
+            <div id="aiResultsSection" class="hidden bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">AI Analysis Results</h2>
+                
+                <div class="space-y-4">
+                    <!-- Incident Type Result -->
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Incident Type</h3>
+                        <div id="incidentTypeResult" class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <span class="text-blue-900 font-medium" id="incidentTypeText">-</span>
+                                <i class="fas fa-check-circle text-blue-600"></i>
+                            </div>
+                        </div>
+                        <input type="hidden" id="incidentType" name="incidentType">
+                    </div>
+                    
+                    <!-- Severity Level Result -->
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Severity Level</h3>
+                        <div id="severityResult" class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <span class="text-blue-900 font-medium" id="severityText">-</span>
+                                <div id="severityIndicator" class="flex items-center gap-1">
+                                    <!-- Severity dots will be added here -->
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="severity" name="severity">
+                    </div>
+                    
+                    <!-- Confidence Level -->
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">AI Confidence</h3>
+                        <div class="flex items-center gap-3">
+                            <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                <div id="confidenceBar" class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <span id="confidenceText" class="text-sm font-medium text-gray-700">0%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Edit Options -->
+                    <div class="pt-4 border-t border-gray-200">
+                        <p class="text-sm text-gray-600 mb-3">Not satisfied with the analysis? You can manually adjust:</p>
+                        <div class="flex gap-3">
+                            <button type="button" id="editIncidentTypeBtn" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                                <i class="fas fa-edit mr-2"></i>
+                                Edit Type
+                            </button>
+                            <button type="button" id="editSeverityBtn" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                                <i class="fas fa-sliders-h mr-2"></i>
+                                Edit Severity
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Incident Type Modal -->
+            <div id="editIncidentTypeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Select Incident Type</h3>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-6">
+                        <button type="button" class="edit-type-option flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-all" data-type="flood">
+                            <i class="fas fa-water text-blue-600 text-xl"></i>
+                            <span class="font-medium">Flood</span>
+                        </button>
+                        <button type="button" class="edit-type-option flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-all" data-type="fire">
+                            <i class="fas fa-fire text-red-600 text-xl"></i>
+                            <span class="font-medium">Fire</span>
+                        </button>
+                        <button type="button" class="edit-type-option flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-all" data-type="medical">
+                            <i class="fas fa-heartbeat text-green-600 text-xl"></i>
+                            <span class="font-medium">Medical</span>
+                        </button>
+                        <button type="button" class="edit-type-option flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-all" data-type="accident">
+                            <i class="fas fa-car-crash text-yellow-600 text-xl"></i>
+                            <span class="font-medium">Accident</span>
+                        </button>
+                        <button type="button" class="edit-type-option flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-all" data-type="crime">
+                            <i class="fas fa-shield-alt text-purple-600 text-xl"></i>
+                            <span class="font-medium">Crime</span>
+                        </button>
+                        <button type="button" class="edit-type-option flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-all" data-type="landslide">
+                            <i class="fas fa-mountain text-orange-600 text-xl"></i>
+                            <span class="font-medium">Landslide</span>
+                        </button>
+                        <button type="button" class="edit-type-option flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-all" data-type="power">
+                            <i class="fas fa-bolt text-gray-600 text-xl"></i>
+                            <span class="font-medium">Power</span>
+                        </button>
+                        <button type="button" class="edit-type-option flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-all" data-type="other">
+                            <i class="fas fa-ellipsis-h text-gray-600 text-xl"></i>
+                            <span class="font-medium">Other</span>
+                        </button>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button type="button" id="cancelTypeEditBtn" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="button" id="saveTypeEditBtn" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Severity Modal -->
+            <div id="editSeverityModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Select Severity Level</h3>
+                    
+                    <div class="space-y-3 mb-6">
+                        <button type="button" class="edit-severity-option w-full p-4 border-2 border-green-200 bg-green-50 rounded-lg text-left transition-all" data-severity="low">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    <span class="font-semibold text-green-900">Low</span>
+                                </div>
+                                <i class="fas fa-check text-green-500 hidden"></i>
+                            </div>
+                            <p class="text-sm text-green-700 mt-2">Minor issue, no immediate danger</p>
+                        </button>
+                        
+                        <button type="button" class="edit-severity-option w-full p-4 border-2 border-yellow-200 bg-yellow-50 rounded-lg text-left transition-all" data-severity="medium">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                    <span class="font-semibold text-yellow-900">Medium</span>
+                                </div>
+                                <i class="fas fa-check text-yellow-500 hidden"></i>
+                            </div>
+                            <p class="text-sm text-yellow-700 mt-2">Requires attention soon</p>
+                        </button>
+                        
+                        <button type="button" class="edit-severity-option w-full p-4 border-2 border-red-200 bg-red-50 rounded-lg text-left transition-all" data-severity="high">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                    <span class="font-semibold text-red-900">High</span>
+                                </div>
+                                <i class="fas fa-check text-red-500 hidden"></i>
+                            </div>
+                            <p class="text-sm text-red-700 mt-2">Urgent, immediate response needed</p>
+                        </button>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button type="button" id="cancelSeverityEditBtn" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="button" id="saveSeverityEditBtn" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Photo/Video Section (Hidden until AI analysis is complete) -->
+            <div id="photoSection" class="hidden bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Photo Evidence*</h2>
+                
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative">
+                    <div id="cameraPlaceholder" class="flex flex-col items-center">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                            <i class="fas fa-camera text-gray-400 text-2xl"></i>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">Click to upload or take a photo</p>
+                        <p class="text-xs text-gray-500">JPG, PNG, GIF up to 5MB</p>
+                    </div>
+                    <img id="cameraPreview" src="" alt="Preview" class="hidden w-full h-48 object-cover rounded mb-3">
+                    
+                    <button id="takePhotoBtn" type="button" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
+                        <i class="fas fa-camera"></i>
+                        Upload Photo
+                    </button>
+                    
+                    <button id="removePhotoBtn" type="button" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 mx-auto mt-3">
+                        <i class="fas fa-trash"></i>
+                        Remove Photo
+                    </button>
+                    
+                    <!-- Hidden inputs for storing photo data -->
+                    <input type="hidden" id="photoInput" name="photo">
+                    <input type="file" id="photoInputFile" accept="image/*" capture="environment" class="hidden">
+                </div>
+            </div>
+
+            <!-- Submit Button (Hidden until AI analysis is complete) -->
+            <div id="submitSection" class="hidden flex gap-3">
+                <button type="button" onclick="window.history.back()" class="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" id="submitBtn" class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-colors shadow-lg shadow-blue-500/30">
+                    Submit Report
+                </button>
+            </div>
+        </form>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex z-[5000] items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p class="text-gray-700">Analyzing incident...</p>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 z-[5000]">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div class="text-center mb-4">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-check text-green-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Report Submitted</h3>
+                <p id="confirmationMessage" class="text-sm text-gray-600">Your report has been successfully submitted and will be reviewed by our team.</p>
+            </div>
+            
+            <button onclick="window.history.back()" class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                Back
+            </button>
+        </div>
+    </div>
+
+    <script src="js/report.js"></script>
+</body>
+</html>

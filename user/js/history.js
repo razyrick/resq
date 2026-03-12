@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost/resq';
+const API_BASE_URL = 'https://greenyellow-hawk-206191.hostingersite.com';
 let userData = null;
 let currentPage = 1;
 let hasMorePages = true;
@@ -9,6 +9,16 @@ let currentImages = [];
 let currentImageIndex = 0;
 let incidentMap = null;
 let incidentMarker = null;
+
+// Rating variables
+let selectedRating = 0;
+let ratingDescriptions = {
+    1: "Poor",
+    2: "Fair", 
+    3: "Good",
+    4: "Very Good",
+    5: "Excellent"
+};
 
 // Get stored user data
 function getStoredUserData() {
@@ -61,6 +71,7 @@ async function fetchIncidents(page = 1, limit = 10) {
         }
 
         const data = await response.json();
+        console.log(data);
         return data;
     } catch (error) {
         console.error('Error fetching incidents:', error);
@@ -81,6 +92,7 @@ function formatDate(dateString) {
     });
 }
 
+// Get incident type icon and color
 // Get incident type icon and color
 function getIncidentTypeInfo(type) {
     const types = {
@@ -139,21 +151,51 @@ function getIncidentTypeInfo(type) {
             textColor: 'text-gray-800',
             borderColor: 'border-gray-200',
             text: 'Power Outage'
-        },
-        'other': { 
+        }
+    };
+    
+    // If type is not provided, use 'other'
+    if (!type) {
+        return types['other'] || { 
             icon: 'fa-ellipsis-h', 
             color: 'gray', 
             bgColor: 'bg-gray-100',
             textColor: 'text-gray-800',
             borderColor: 'border-gray-200',
             text: 'Other Incident'
-        }
-    };
+        };
+    }
     
-    return types[type] || types['other'];
+    const typeKey = type.toLowerCase();
+    
+    // Check if it's in our predefined types
+    if (types[typeKey]) {
+        return types[typeKey];
+    }
+    
+    // If not found, create a dynamic configuration with the actual type value
+    return {
+        icon: 'fa-triangle-exclamation', 
+        color: 'gray',
+        bgColor: 'bg-gray-100',
+        textColor: 'text-gray-800',
+        borderColor: 'border-gray-200',
+        text: formatIncidentTypeName(type)
+    };
 }
 
-// Get status info - FIXED: Use actual status from backend
+// Helper function to format incident type name from snake_case to readable text
+function formatIncidentTypeName(type) {
+    if (!type) return 'Other Incident';
+    
+    // Convert snake_case to readable text
+    return type
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+// Get status info
 function getStatusInfo(status) {
     const statuses = {
         'pending': { 
@@ -214,10 +256,8 @@ function getSeverityInfo(severity) {
     return severities[severity] || severities['medium'];
 }
 
-// FIXED: Use actual status from backend instead of calculating
+// Get incident status
 function getIncidentStatus(incident) {
-    // Use the status from the backend if available
-    // If not, fall back to the calculation
     return incident.status || calculateStatus(incident);
 }
 
@@ -349,6 +389,7 @@ function renderIncidents(incidents) {
             const statusInfo = getStatusInfo(incident.status);
             const severityInfo = getSeverityInfo(incident.severity_level);
             const hasPhoto = hasValidPhoto(incident.photo);
+            const isRated = incident.user_rated || false;
             
             html += `
                 <div class="report-card bg-white rounded-lg shadow-sm overflow-hidden border-l-4 ${statusInfo.borderColor}" data-status="${status}" data-search="${incident.description.toLowerCase()} ${incident.incident_type.toLowerCase()}">
@@ -366,7 +407,7 @@ function renderIncidents(incidents) {
                                         ${severityInfo.text}
                                     </span>
                                 </div>
-                                <p class="text-xs text-gray-500">${formatDate(incident.created_at)}</p>
+                                <p class="text-xs text-gray-500">${formatDate(incident.created_at)} ${incident.status === 'resolved' ? ` - Resolved by: ${incident.agency?.agency_name || `Brgy. ${incident.baranggay?.baranggay_name}` || 'Unknown'}` : ''}</p>
                             </div>
                             <button class="text-blue-600 hover:text-blue-700 flex-shrink-0 ml-2">
                                 <i class="fas fa-chevron-right"></i>
@@ -406,9 +447,15 @@ function renderIncidents(incidents) {
                         
                         <div class="flex gap-2">
                             ${status === 'resolved' ? `
-                                <button class="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                                    <i class="fas fa-star mr-1"></i>Rate Response
-                                </button>
+                                ${isRated ? `
+                                    <button class="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg cursor-default" disabled>
+                                        <i class="fas fa-check mr-1"></i>Rating Submitted
+                                    </button>
+                                ` : `
+                                    <button class="rate-response-btn flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors" data-incident-id="${incident.incident_id}">
+                                        <i class="fas fa-star mr-1"></i>Rate Response
+                                    </button>
+                                `}
                             ` : ''}
                             <button class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors view-details" data-incident-id="${incident.incident_id}">
                                 View Details
@@ -429,6 +476,14 @@ function renderIncidents(incidents) {
             showIncidentModal(incidentId);
         });
     });
+    
+    // Add event listeners to rate response buttons
+    document.querySelectorAll('.rate-response-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const incidentId = this.dataset.incidentId;
+            openRatingModal(incidentId);
+        });
+    });
 }
 
 // Show incident details modal
@@ -440,7 +495,7 @@ function showIncidentModal(incidentId) {
     }
 
     const typeInfo = getIncidentTypeInfo(incident.incident_type);
-    const status = getIncidentStatus(incident); // FIXED: Use actual status
+    const status = getIncidentStatus(incident); 
     const statusInfo = getStatusInfo(status);
     const severityInfo = getSeverityInfo(incident.severity_level);
     const hasPhoto = hasValidPhoto(incident.photo);
@@ -577,6 +632,257 @@ function filterIncidents(filter = 'all', searchTerm = '') {
     filteredIncidents = filtered;
     renderIncidents(filtered);
     updateStatistics(filtered);
+}
+
+// Rating functionality
+
+// Open rating modal
+function openRatingModal(incidentId) {
+    const modal = document.getElementById('ratingModal');
+    const incidentIdInput = document.getElementById('ratingIncidentId');
+    const submitBtn = document.getElementById('submitRating');
+    
+    if (modal && incidentIdInput) {
+        // Reset form
+        resetRatingForm();
+        
+        // Set incident ID
+        incidentIdInput.value = incidentId;
+        
+        // Disable submit button initially
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submit Rating';
+        }
+        
+        // Show modal
+        modal.classList.remove('hidden');
+    }
+}
+
+// Reset rating form
+function resetRatingForm() {
+    selectedRating = 0;
+    
+    // Reset stars
+    document.querySelectorAll('.rating-star').forEach(star => {
+        star.classList.remove('text-yellow-400');
+        star.classList.add('text-gray-300');
+    });
+    
+    // Reset text
+    const ratingText = document.getElementById('ratingText');
+    const selectedRatingSpan = document.getElementById('selectedRating');
+    const feedback = document.getElementById('feedback');
+    
+    if (ratingText) ratingText.textContent = 'Click a star to rate';
+    if (selectedRatingSpan) selectedRatingSpan.textContent = '';
+    if (feedback) feedback.value = '';
+}
+
+// Handle star click
+function handleStarClick(rating) {
+    selectedRating = rating;
+    
+    // Update star display
+    document.querySelectorAll('.rating-star').forEach((star, index) => {
+        if (index < rating) {
+            star.classList.remove('text-gray-300');
+            star.classList.add('text-yellow-400');
+        } else {
+            star.classList.remove('text-yellow-400');
+            star.classList.add('text-gray-300');
+        }
+    });
+    
+    // Update text
+    const ratingText = document.getElementById('ratingText');
+    const selectedRatingSpan = document.getElementById('selectedRating');
+    
+    if (ratingText && selectedRatingSpan) {
+        ratingText.textContent = 'You rated:';
+        selectedRatingSpan.textContent = `${rating} ${rating === 1 ? 'star' : 'stars'} (${ratingDescriptions[rating]})`;
+    }
+    
+    // Enable submit button
+    const submitBtn = document.getElementById('submitRating');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+    }
+}
+
+// Submit rating
+async function submitRating() {
+    const incidentIdInput = document.getElementById('ratingIncidentId');
+    const feedback = document.getElementById('feedback');
+    const submitBtn = document.getElementById('submitRating');
+    
+    if (!incidentIdInput || selectedRating === 0) return;
+    
+    const incidentId = incidentIdInput.value;
+    const feedbackText = feedback ? feedback.value.trim() : '';
+    
+    if (!incidentId) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Invalid incident ID',
+            confirmButtonColor: '#ef4444'
+        });
+        return;
+    }
+    
+    try {
+        // Update button to show loading
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
+        }
+        
+        // Get the incident
+        const incident = allIncidents.find(inc => inc.incident_id === incidentId);
+        if (!incident) {
+            throw new Error('Incident not found');
+        }
+        
+        // Prepare rating data
+        const ratingData = {
+            incident_id: incidentId,
+            rating: selectedRating,
+            feedback: feedbackText,
+            rated_at: new Date().toISOString(),
+            agency_id: incident.agency?.agency_id,
+            baranggay_id: incident.baranggay?.baranggay_id
+        };
+        
+        // Here you would send the rating to your API
+        // For now, we'll simulate success
+        console.log('Submitting rating:', ratingData);
+        
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Show success message
+        Swal.fire({
+            icon: 'success',
+            title: 'Thank You!',
+            html: `
+                <div class="text-center">
+                    <div class="flex justify-center gap-1 mb-3">
+                        ${Array(5).fill().map((_, i) => 
+                            `<i class="fas fa-star text-2xl ${i < selectedRating ? 'text-yellow-400' : 'text-gray-300'}"></i>`
+                        ).join('')}
+                    </div>
+                    <p class="text-gray-700">Your ${selectedRating}-star rating has been submitted!</p>
+                    <p class="text-sm text-gray-500 mt-2">Your feedback helps improve our emergency response services.</p>
+                </div>
+            `,
+            confirmButtonColor: '#2563eb'
+        });
+        
+        // Close modal
+        closeRatingModal();
+        
+        // Mark incident as rated locally
+        if (incident) {
+            incident.user_rated = true;
+        }
+        
+        // Update the Rate Response button to show it's been rated
+        updateRateButton(incidentId);
+        
+    } catch (error) {
+        console.error('Error submitting rating:', error);
+        
+        Swal.fire({
+            icon: 'error',
+            title: 'Failed to Submit',
+            text: error.message || 'Please try again later',
+            confirmButtonColor: '#ef4444'
+        });
+        
+        // Reset button
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Rating';
+        }
+    }
+}
+
+// Update rate button after submission
+function updateRateButton(incidentId) {
+    const buttons = document.querySelectorAll(`.rate-response-btn[data-incident-id="${incidentId}"]`);
+    buttons.forEach(button => {
+        button.innerHTML = '<i class="fas fa-check mr-1"></i>Rating Submitted';
+        button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        button.classList.add('bg-green-600', 'hover:bg-green-700');
+        button.disabled = true;
+    });
+}
+
+// Close rating modal
+function closeRatingModal() {
+    const modal = document.getElementById('ratingModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// Initialize rating functionality
+function initializeRating() {
+    // Star click handlers
+    document.querySelectorAll('.rating-star').forEach(star => {
+        star.addEventListener('click', function() {
+            const rating = parseInt(this.dataset.rating);
+            handleStarClick(rating);
+        });
+        
+        // Add hover effect
+        star.addEventListener('mouseenter', function() {
+            const rating = parseInt(this.dataset.rating);
+            document.querySelectorAll('.rating-star').forEach((s, index) => {
+                if (index < rating) {
+                    s.classList.add('text-yellow-300');
+                }
+            });
+        });
+        
+        star.addEventListener('mouseleave', function() {
+            document.querySelectorAll('.rating-star').forEach((s, index) => {
+                if (index >= selectedRating) {
+                    s.classList.remove('text-yellow-300');
+                }
+            });
+        });
+    });
+    
+    // Submit button
+    const submitBtn = document.getElementById('submitRating');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', submitRating);
+    }
+    
+    // Cancel/close buttons
+    const cancelBtn = document.getElementById('cancelRating');
+    const closeBtn = document.getElementById('closeRatingModal');
+    
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeRatingModal);
+    }
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeRatingModal);
+    }
+    
+    // Close modal when clicking outside
+    const modal = document.getElementById('ratingModal');
+    if (modal) {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                closeRatingModal();
+            }
+        });
+    }
 }
 
 // Initialize and load data
@@ -728,6 +1034,7 @@ document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
         closeImagePreview();
         closeIncidentModal();
+        closeRatingModal();
     }
 });
 
@@ -856,18 +1163,6 @@ function updateMeshStatus() {
     if (meshStatusSidebar) meshStatusSidebar.className = `w-2.5 h-2.5 rounded-full ${status.color} ${status.class}`;
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    initializePage();
-    updateMeshStatus();
-    setInterval(updateMeshStatus, 5000);
-});
-
-// Make functions global for onclick handlers
-window.previewImage = previewImage;
-window.closeImagePreview = closeImagePreview;
-window.navigateImage = navigateImage;
-
 // Preview image in full screen
 function previewImage(imageSrc, images = []) {
     currentImages = images;
@@ -905,3 +1200,20 @@ function closeImagePreview() {
     currentImages = [];
     currentImageIndex = 0;
 }
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    initializePage();
+    initializeRating();
+    updateMeshStatus();
+    setInterval(updateMeshStatus, 5000);
+});
+
+// Make functions global for onclick handlers
+window.previewImage = previewImage;
+window.closeImagePreview = closeImagePreview;
+window.navigateImage = navigateImage;
+window.openRatingModal = openRatingModal;
+window.handleStarClick = handleStarClick;
+window.submitRating = submitRating;
+window.closeRatingModal = closeRatingModal;

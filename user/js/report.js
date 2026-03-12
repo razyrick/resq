@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost/resq';
+const API_BASE_URL = 'https://greenyellow-hawk-206191.hostingersite.com';
 let userData = null;
 let map, marker;
 let selectedType = null;
@@ -7,6 +7,11 @@ let selectedSeverity = null;
 let photoAttached = false;
 let currentLatitude = null;
 let currentLongitude = null;
+
+// Cloudinary Configuration
+const CLOUDINARY_CLOUD_NAME = 'dgwp7j5l3';
+const CLOUDINARY_UPLOAD_PRESET = 'resq-laguna';
+let cloudinaryWidget = null;
 
 // Get stored user data
 function getStoredUserData() {
@@ -165,30 +170,184 @@ document.getElementById('description').addEventListener('input', function() {
     }
 });
 
-// Photo handling
-document.getElementById('takePhotoBtn').addEventListener('click', function() {
-    document.getElementById('photoInput').click();
-});
-
-document.getElementById('photoInput').addEventListener('change', function(e) {
-    if (e.target.files && e.target.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            document.getElementById('cameraPreview').src = event.target.result;
+// Initialize Cloudinary Upload Widget
+function initializeCloudinaryWidget() {
+    cloudinaryWidget = cloudinary.createUploadWidget({
+        cloudName: CLOUDINARY_CLOUD_NAME,
+        uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+        sources: ['local', 'camera', 'url'],
+        multiple: false,
+        maxFileSize: 5000000, // 5MB
+        clientAllowedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+        maxImageWidth: 2000,
+        maxImageHeight: 2000,
+        theme: 'minimal',
+        styles: {
+            palette: {
+                window: "#FFFFFF",
+                windowBorder: "#90A0B3",
+                tabIcon: "#0078FF",
+                menuIcons: "#5A616A",
+                textDark: "#000000",
+                textLight: "#FFFFFF",
+                link: "#0078FF",
+                action: "#FF620C",
+                inactiveTabIcon: "#0E2F5A",
+                error: "#F44235",
+                inProgress: "#0078FF",
+                complete: "#20B832",
+                sourceBg: "#E4EBF1"
+            }
+        }
+    }, (error, result) => {
+        if (!error && result && result.event === "success") {
+            // Photo uploaded successfully
+            const imageUrl = result.info.secure_url;
+            
+            // Display the uploaded photo
+            document.getElementById('cameraPreview').src = imageUrl;
             document.getElementById('cameraPreview').classList.remove('hidden');
             document.getElementById('cameraPlaceholder').classList.add('hidden');
             document.getElementById('removePhotoBtn').classList.remove('hidden');
+            document.getElementById('photoInput').value = imageUrl; // Store the URL in hidden input
             photoAttached = true;
-        };
-        reader.readAsDataURL(e.target.files[0]);
+            
+            // Show success message
+            Swal.fire({
+                icon: 'success',
+                title: 'Photo Uploaded',
+                text: 'Photo has been uploaded successfully!',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+        
+        if (error) {
+            console.error('Cloudinary upload error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Upload Failed',
+                text: 'Failed to upload photo. Please try again.',
+                confirmButtonColor: '#ef4444'
+            });
+        }
+    });
+}
+
+// Photo handling
+document.getElementById('takePhotoBtn').addEventListener('click', function() {
+    // Open Cloudinary widget instead of file input
+    if (cloudinaryWidget) {
+        cloudinaryWidget.open();
+    } else {
+        // Fallback to file input if Cloudinary not initialized
+        document.getElementById('photoInputFile').click();
     }
 });
+
+// Fallback file input for browsers without Cloudinary support
+document.getElementById('photoInputFile').addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        
+        // Check file size (max 5MB)
+        if (file.size > 5000000) {
+            Swal.fire({
+                icon: 'error',
+                title: 'File Too Large',
+                text: 'File size must be less than 5MB',
+                confirmButtonColor: '#ef4444'
+            });
+            this.value = '';
+            return;
+        }
+        
+        // Check file type
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid File Type',
+                text: 'Please upload a valid image file (JPEG, PNG, GIF, WebP)',
+                confirmButtonColor: '#ef4444'
+            });
+            this.value = '';
+            return;
+        }
+        
+        // Upload to Cloudinary
+        uploadToCloudinary(file);
+    }
+});
+
+// Upload file to Cloudinary
+async function uploadToCloudinary(file) {
+    try {
+        // Show loading
+        const loadingSwal = Swal.fire({
+            title: 'Uploading...',
+            text: 'Please wait while we upload your photo',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        // Create FormData
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        formData.append('cloud_name', CLOUDINARY_CLOUD_NAME);
+        
+        // Upload to Cloudinary
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Upload failed with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Close loading
+        await loadingSwal.close();
+        
+        // Display the uploaded photo
+        document.getElementById('cameraPreview').src = data.secure_url;
+        document.getElementById('cameraPreview').classList.remove('hidden');
+        document.getElementById('cameraPlaceholder').classList.add('hidden');
+        document.getElementById('removePhotoBtn').classList.remove('hidden');
+        document.getElementById('photoInput').value = data.secure_url; // Store the URL in hidden input
+        photoAttached = true;
+        
+        // Show success message
+        Swal.fire({
+            icon: 'success',
+            title: 'Photo Uploaded',
+            text: 'Photo has been uploaded successfully!',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        
+    } catch (error) {
+        console.error('Error uploading to Cloudinary:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Upload Failed',
+            text: 'Failed to upload photo. Please try again.',
+            confirmButtonColor: '#ef4444'
+        });
+    }
+}
 
 document.getElementById('removePhotoBtn').addEventListener('click', function() {
     document.getElementById('cameraPreview').src = '';
     document.getElementById('cameraPreview').classList.add('hidden');
     document.getElementById('cameraPlaceholder').classList.remove('hidden');
     document.getElementById('photoInput').value = '';
+    document.getElementById('photoInputFile').value = '';
     this.classList.add('hidden');
     photoAttached = false;
 });
@@ -273,18 +432,8 @@ document.getElementById('reportForm').addEventListener('submit', async function(
             incident_type: selectedType,
             severity_level: selectedSeverity,
             description: description,
-            photo: '' // File path or empty string
+            photo: document.getElementById('photoInput').value || '' // Cloudinary URL or empty string
         };
-
-        // Handle photo if attached - SIMPLIFIED VERSION
-        // Just send the filename or empty string
-        if (photoAttached) {
-            const photoFile = document.getElementById('photoInput').files[0];
-            if (photoFile) {
-                // Just send the filename, not the actual file data
-                reportData.photo = photoFile.name;
-            }
-        }
 
         // Submit report
         const result = await submitReport(reportData);
@@ -380,6 +529,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateMeshStatus();
     updateOnlineStatus();
     loadUserData();
+    initializeCloudinaryWidget();
     setInterval(updateMeshStatus, 5000);
 });
 

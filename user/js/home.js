@@ -1,7 +1,23 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost/resq';
+const API_BASE_URL = 'https://greenyellow-hawk-206191.hostingersite.com';
 let map;
 let incidents = [];
+
+// Sta. Cruz, Laguna Coordinates
+const STA_CRUZ_CENTER = [14.2769, 121.4164];
+
+// Sta. Cruz, Laguna Boundary Coordinates (approximate polygon)
+const STA_CRUZ_BOUNDARY = [
+    // [14.3110, 121.3600], // Northwest
+    // [14.3060, 121.3950], // North
+    // [14.2950, 121.4300], // Northeast
+    // [14.2650, 121.4500], // East
+    // [14.2400, 121.4400], // Southeast
+    // [14.2250, 121.4100], // South
+    // [14.2350, 121.3800], // Southwest
+    // [14.2650, 121.3650], // West
+    // [14.2950, 121.3750]  // Northwest (close the polygon)
+];
 
 // Get stored user data
 function getStoredUserData() {
@@ -157,14 +173,86 @@ function createPinMarker(lat, lng, color, icon) {
     return L.marker([lat, lng], { icon: pinIcon });
 }
 
+// Create Sta. Cruz boundary polygon
+function createStaCruzBoundary() {
+    // Create the polygon
+    const polygon = L.polygon(STA_CRUZ_BOUNDARY, {
+        color: '#2563eb', // Blue color
+        weight: 3,
+        opacity: 0.8,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.1,
+        className: 'sta-cruz-boundary'
+    }).addTo(map);
+
+    // Add label at center
+    L.marker(STA_CRUZ_CENTER, {
+        icon: L.divIcon({
+            className: 'sta-cruz-label',
+            html: `
+                <div style="
+                    background: rgba(59, 130, 246, 0.9);
+                    color: white;
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    font-weight: bold;
+                    font-size: 12px;
+                    white-space: nowrap;
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                ">
+                    <i class="fas fa-map-marker-alt mr-1"></i>
+                    Sta. Cruz, Laguna
+                </div>
+            `,
+            iconSize: [150, 40],
+            iconAnchor: [75, 20]
+        })
+    }).addTo(map);
+
+    // Add boundary coordinates marker for reference
+    STA_CRUZ_BOUNDARY.forEach((coord, index) => {
+        L.circleMarker(coord, {
+            radius: 4,
+            fillColor: '#2563eb',
+            color: '#fff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(map).bindTooltip(`Boundary Point ${index + 1}`, {
+            permanent: false,
+            direction: 'top'
+        });
+    });
+
+    return polygon;
+}
+
+// Check if coordinates are within Sta. Cruz boundary
+function isWithinStaCruzBoundary(lat, lng) {
+    // Simple bounding box check for performance
+    const minLat = Math.min(...STA_CRUZ_BOUNDARY.map(c => c[0]));
+    const maxLat = Math.max(...STA_CRUZ_BOUNDARY.map(c => c[0]));
+    const minLng = Math.min(...STA_CRUZ_BOUNDARY.map(c => c[1]));
+    const maxLng = Math.max(...STA_CRUZ_BOUNDARY.map(c => c[1]));
+    
+    return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+}
+
 // Initialize map with pin markers
 async function initializeMap() {
-    // Initialize map
-    map = L.map('map').setView([14.2769, 121.4164], 13);
+    // Initialize map centered on Sta. Cruz, Laguna
+    map = L.map('map').setView(STA_CRUZ_CENTER, 13);
     
+    // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18,
+        minZoom: 10
     }).addTo(map);
+
+    // Create Sta. Cruz boundary
+    createStaCruzBoundary();
 
     try {
         // Fetch dashboard stats
@@ -194,11 +282,20 @@ async function initializeMap() {
                     
                     const marker = createPinMarker(lat, lng, color, icon).addTo(map);
                     
+                    // Add boundary check indicator to popup
+                    const withinBoundary = isWithinStaCruzBoundary(lat, lng);
+                    
                     marker.bindPopup(`
                         <div class="p-2 min-w-[200px]">
-                            <div class="flex items-center gap-2 mb-2">
-                                <i class="fas ${icon} text-gray-600"></i>
-                                <strong class="text-sm capitalize">${incident.incident_type}</strong>
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas ${icon} text-gray-600"></i>
+                                    <strong class="text-sm capitalize">${incident.incident_type}</strong>
+                                </div>
+                                <span class="px-2 py-1 text-xs rounded-full ${withinBoundary ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                    <i class="fas ${withinBoundary ? 'fa-check-circle' : 'fa-exclamation-triangle'} mr-1"></i>
+                                    ${withinBoundary ? 'Within Sta. Cruz' : 'Outside Sta. Cruz'}
+                                </span>
                             </div>
                             <p class="text-xs text-gray-600 mb-1">${incident.description}</p>
                             <div class="flex items-center gap-2 mb-2">
@@ -208,7 +305,13 @@ async function initializeMap() {
                                 <span class="text-xs text-gray-500 capitalize">${incident.severity_level} severity</span>
                             </div>
                             <p class="text-xs text-gray-500">${incident.baranggay?.baranggay_name || incident.baranggay?.baranggay || 'Unknown location'}</p>
-                            <p class="text-xs text-gray-400 mt-1">${new Date(incident.created_at).toLocaleString()}</p>
+                            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
+                                <p class="text-xs text-gray-400">${new Date(incident.created_at).toLocaleString()}</p>
+                                <button onclick="zoomToIncident(${lat}, ${lng})" class="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                                    <i class="fas fa-search-location"></i>
+                                    Zoom
+                                </button>
+                            </div>
                         </div>
                     `);
                 }
@@ -216,23 +319,91 @@ async function initializeMap() {
 
             // Adjust map view to show all markers if there are incidents
             if (incidents.length > 0) {
-                const group = new L.featureGroup(incidents.map(incident => {
+                const markers = incidents.map(incident => {
                     const lat = parseFloat(incident.latitude);
                     const lng = parseFloat(incident.longitude);
                     return !isNaN(lat) && !isNaN(lng) ? L.marker([lat, lng]) : null;
-                }).filter(Boolean));
+                }).filter(Boolean);
                 
-                if (group.getLayers().length > 0) {
+                if (markers.length > 0) {
+                    const group = new L.featureGroup(markers);
                     map.fitBounds(group.getBounds().pad(0.1));
                 }
             }
         }
     } catch (error) {
         console.error('Error loading incidents:', error);
-        // Fallback to demo incidents if API fails
-        loadDemoIncidents();
-        loadDemoStats();
     }
+
+    // Add map controls
+    addMapControls();
+}
+
+// Add map controls
+function addMapControls() {
+    // Add zoom to Sta. Cruz button
+    L.Control.zoomToStaCruz = L.Control.extend({
+        onAdd: function(map) {
+            const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+            container.innerHTML = `
+                <button class="bg-white hover:bg-gray-100 text-gray-800 font-bold py-2 px-3 rounded-l border-r border-gray-300" 
+                        title="Zoom to Sta. Cruz" 
+                        style="border-radius: 4px 0 0 4px;">
+                    <i class="fas fa-home text-blue-600"></i>
+                </button>
+            `;
+            
+            L.DomEvent.on(container, 'click', function() {
+                map.setView(STA_CRUZ_CENTER, 13);
+            });
+            
+            L.DomEvent.disableClickPropagation(container);
+            return container;
+        }
+    });
+
+    // Add toggle boundary button
+    L.Control.toggleBoundary = L.Control.extend({
+        onAdd: function(map) {
+            const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+            container.innerHTML = `
+                <button class="bg-white hover:bg-gray-100 text-gray-800 font-bold py-2 px-3 rounded-r" 
+                        title="Toggle Sta. Cruz Boundary" 
+                        style="border-radius: 0 4px 4px 0;">
+                    <i class="fas fa-map text-blue-600"></i>
+                </button>
+            `;
+            
+            let boundaryVisible = true;
+            const boundaryLayer = document.querySelector('.sta-cruz-boundary');
+            
+            L.DomEvent.on(container, 'click', function() {
+                boundaryVisible = !boundaryVisible;
+                if (boundaryLayer) {
+                    boundaryLayer.style.display = boundaryVisible ? 'block' : 'none';
+                }
+                this.innerHTML = `
+                    <i class="fas ${boundaryVisible ? 'fa-eye' : 'fa-eye-slash'} text-blue-600"></i>
+                `;
+            });
+            
+            L.DomEvent.disableClickPropagation(container);
+            return container;
+        }
+    });
+
+    // Add controls to map
+    new L.Control.zoomToStaCruz({ position: 'topleft' }).addTo(map);
+    new L.Control.toggleBoundary({ position: 'topleft' }).addTo(map);
+}
+
+// Zoom to specific incident
+function zoomToIncident(lat, lng) {
+    map.setView([lat, lng], 16);
+    L.popup()
+        .setLatLng([lat, lng])
+        .setContent('Incident Location')
+        .openOn(map);
 }
 
 // Update incident counts in the UI
@@ -244,80 +415,6 @@ function updateIncidentCounts(incidents) {
     document.getElementById('pendingCount').textContent = pendingCount;
     document.getElementById('ongoingCount').textContent = ongoingCount;
     document.getElementById('resolvedCount').textContent = resolvedCount;
-}
-
-// Load demo incidents if API fails
-function loadDemoIncidents() {
-    const demoIncidents = [
-        { 
-            latitude: 14.2769, 
-            longitude: 121.4164, 
-            incident_type: 'flood', 
-            status: 'ongoing',
-            severity_level: 'high',
-            description: 'Flooding in low-lying areas',
-            baranggay: { baranggay: 'San Pablo' },
-            created_at: new Date().toISOString()
-        },
-        { 
-            latitude: 14.2850, 
-            longitude: 121.4250, 
-            incident_type: 'fire', 
-            status: 'pending',
-            severity_level: 'critical',
-            description: 'House fire reported',
-            baranggay: { baranggay: 'Santa Cruz' },
-            created_at: new Date().toISOString()
-        },
-        { 
-            latitude: 14.2700, 
-            longitude: 121.4100, 
-            incident_type: 'medical', 
-            status: 'resolved',
-            severity_level: 'medium',
-            description: 'Medical emergency response',
-            baranggay: { baranggay: 'Calamba' },
-            created_at: new Date().toISOString()
-        }
-    ];
-
-    demoIncidents.forEach(incident => {
-        const color = getStatusColor(incident.status);
-        const icon = getIncidentTypeIcon(incident.incident_type);
-        
-        const marker = createPinMarker(incident.latitude, incident.longitude, color, icon).addTo(map);
-        
-        marker.bindPopup(`
-            <div class="p-2 min-w-[200px]">
-                <div class="flex items-center gap-2 mb-2">
-                    <i class="fas ${icon} text-gray-600"></i>
-                    <strong class="text-sm capitalize">${incident.incident_type}</strong>
-                </div>
-                <p class="text-xs text-gray-600 mb-1">${incident.description}</p>
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="px-2 py-1 text-xs rounded-full text-white" style="background-color: ${color}">
-                        ${incident.status.toUpperCase()}
-                    </span>
-                    <span class="text-xs text-gray-500 capitalize">${incident.severity_level} severity</span>
-                </div>
-                <p class="text-xs text-gray-500">${incident.baranggay.baranggay}</p>
-                <p class="text-xs text-gray-400 mt-1">${new Date(incident.created_at).toLocaleString()}</p>
-            </div>
-        `);
-    });
-
-    updateIncidentCounts(demoIncidents);
-}
-
-// Load demo stats if API fails
-function loadDemoStats() {
-    const demoStats = {
-        total_incidents: 15,
-        reports_submitted: 8,
-        resolved: 6,
-        pending: 2
-    };
-    updateDashboardStats(demoStats);
 }
 
 // Sidebar functionality
@@ -389,7 +486,7 @@ document.getElementById('notificationBtn').addEventListener('click', function() 
     window.location.href = 'alerts.html';
 });
 
-// Add some CSS for the pin markers
+// Add CSS for the map elements
 const style = document.createElement('style');
 style.textContent = `
     .custom-pin-marker {
@@ -410,5 +507,30 @@ style.textContent = `
         border-radius: 8px !important;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
     }
+    
+    .sta-cruz-boundary {
+        stroke-dasharray: 10, 10;
+    }
+    
+    .leaflet-control-custom {
+        background: none !important;
+        border: none !important;
+    }
+    
+    .leaflet-control-custom button {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    
+    .leaflet-control-custom button:hover {
+        background-color: #f3f4f6 !important;
+    }
 `;
 document.head.appendChild(style);
+
+// Make functions global for onclick handlers
+window.zoomToIncident = zoomToIncident;

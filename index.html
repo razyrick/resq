@@ -19,10 +19,8 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-red-600 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center">
+                        <img src="../logo.jpg" alt="icon" class="w-10 h-10 object-contain" />
                     </div>
                     <div>
                         <h1 class="text-xl font-bold text-slate-900">RES-Q LAGUNA</h1>
@@ -36,8 +34,9 @@
                     <a href="#how-it-works" class="text-sm font-medium text-slate-600 hover:text-blue-600 transition">How It Works</a>
                     <a href="#roles" class="text-sm font-medium text-slate-600 hover:text-blue-600 transition">User Roles</a>
                     <a href="#contact" class="text-sm font-medium text-slate-600 hover:text-blue-600 transition">Contact</a>
+                    <a href="report.html" class="text-sm font-medium text-slate-600 hover:text-blue-600 transition">Report Incident</a>
                     <button onclick="showLoginModal()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
-                        Sign In
+                        Log In
                     </button>
                 </div>
 
@@ -49,35 +48,37 @@
                 </button>
             </div>
         </div>
-
-        <!-- Mobile Menu -->
-        <div id="mobileMenu" class="mobile-menu md:hidden fixed inset-0 bg-white z-50 p-6">
-            <div class="flex justify-between items-center mb-8">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-red-600 rounded-lg flex items-center justify-center">
-                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                    </div>
-                    <span class="font-bold text-slate-900">RES-Q LAGUNA</span>
-                </div>
-                <button id="closeMobileMenu" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <div class="space-y-4">
-                <a href="#features" class="block py-3 text-lg font-medium text-slate-600 hover:text-blue-600 transition" onclick="closeMobileMenu()">Features</a>
-                <a href="#how-it-works" class="block py-3 text-lg font-medium text-slate-600 hover:text-blue-600 transition" onclick="closeMobileMenu()">How It Works</a>
-                <a href="#roles" class="block py-3 text-lg font-medium text-slate-600 hover:text-blue-600 transition" onclick="closeMobileMenu()">User Roles</a>
-                <a href="#contact" class="block py-3 text-lg font-medium text-slate-600 hover:text-blue-600 transition" onclick="closeMobileMenu()">Contact</a>
-                <button onclick="showLoginModal(); closeMobileMenu();" class="w-full mt-4 px-4 py-3 text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
-                    Sign In
-                </button>
-            </div>
-        </div>
     </nav>
+
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="mobile-menu md:hidden fixed inset-0 z-50 p-6 bg-white transform -translate-x-full transition-transform duration-300">
+        <div class="flex justify-between items-center mb-8">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center">
+                    <img src="../logo.jpg" alt="icon" class="w-10 h-10 object-contain" />
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900">RES-Q LAGUNA</h1>
+                    <p class="text-xs text-slate-500">Emergency Response System</p>
+                </div>
+            </div>
+            <button id="closeMobileMenu" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <a href="#features" class="block py-3 text-lg font-medium text-slate-600 hover:text-blue-600 transition" onclick="closeMobileMenu()">Features</a>
+            <a href="#how-it-works" class="block py-3 text-lg font-medium text-slate-600 hover:text-blue-600 transition" onclick="closeMobileMenu()">How It Works</a>
+            <a href="#roles" class="block py-3 text-lg font-medium text-slate-600 hover:text-blue-600 transition" onclick="closeMobileMenu()">User Roles</a>
+            <a href="#contact" class="block py-3 text-lg font-medium text-slate-600 hover:text-blue-600 transition" onclick="closeMobileMenu()">Contact</a>
+            <a href="report.html" class="block py-3 text-lg font-medium text-slate-600 hover:text-blue-600 transition" onclick="closeMobileMenu()">Report Incident</a>
+            <button onclick="showLoginModal(); closeMobileMenu();" class="w-full mt-4 px-4 py-3 text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                Log In
+            </button>
+        </div>
+    </div>
 
     <!-- Hero Section  -->
     <section class="pt-32 pb-20 hero-gradient">
@@ -106,30 +107,6 @@
                     <div class="bg-white rounded-2xl shadow-2xl p-4 md:p-6">
                         <div id="heroMap" class="w-full h-64 md:h-96 rounded-lg"></div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stats Section  -->
-    <section class="py-16 bg-slate-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                <div class="text-center" data-aos="fade-up" data-aos-delay="0">
-                    <div class="stat-number">24/7</div>
-                    <p class="text-slate-600 font-medium mt-2">Monitoring</p>
-                </div>
-                <div class="text-center" data-aos="fade-up" data-aos-delay="100">
-                    <div class="stat-number">50+</div>
-                    <p class="text-slate-600 font-medium mt-2">Barangays Covered</p>
-                </div>
-                <div class="text-center" data-aos="fade-up" data-aos-delay="200">
-                    <div class="stat-number">5min</div>
-                    <p class="text-slate-600 font-medium mt-2">Avg Response Time</p>
-                </div>
-                <div class="text-center" data-aos="fade-up" data-aos-delay="300">
-                    <div class="stat-number">99%</div>
-                    <p class="text-slate-600 font-medium mt-2">Success Rate</p>
                 </div>
             </div>
         </div>
@@ -494,8 +471,8 @@
     </footer>
 
     <!-- Login Modal  -->
-    <div id="loginModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 relative" data-aos="zoom-in">
+    <div id="loginModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-y-auto p-6 md:p-8 relative" data-aos="zoom-in">
             <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -509,7 +486,7 @@
                     </svg>
                 </div>
                 <h2 class="text-xl md:text-2xl font-bold text-slate-900 mb-2">Welcome to RES-Q LAGUNA</h2>
-                <p class="text-slate-600 text-sm md:text-base">Sign in to access the emergency response platform</p>
+                <p class="text-slate-600 text-sm md:text-base">Log in to access the emergency response platform</p>
             </div>
 
             <!-- Login Form -->
@@ -551,63 +528,18 @@
                     </div>
                 </div>
                 
-                <!-- Role Selection -->
-                <div>
-                    <label class="form-label text-sm font-medium text-gray-700 flex items-center mb-3">
-                        <i class="fas fa-user-tag mr-2 text-blue-500"></i>Select Your Role
-                    </label>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="relative">
-                            <input type="radio" name="userRole" value="user" id="roleUser" class="hidden peer" checked>
-                            <label for="roleUser" class="flex flex-col items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all duration-300">
-                                <svg class="w-6 h-6 text-gray-600 mb-1 peer-checked:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
-                                <span class="text-sm font-medium">Public User</span>
-                            </label>
-                        </div>
-                        <div class="relative">
-                            <input type="radio" name="userRole" value="barangay" id="roleBarangay" class="hidden peer">
-                            <label for="roleBarangay" class="flex flex-col items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all duration-300">
-                                <svg class="w-6 h-6 text-gray-600 mb-1 peer-checked:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>
-                                <span class="text-sm font-medium">Barangay</span>
-                            </label>
-                        </div>
-                        <div class="relative">
-                            <input type="radio" name="userRole" value="dispatcher" id="roleDispatcher" class="hidden peer">
-                            <label for="roleDispatcher" class="flex flex-col items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all duration-300">
-                                <svg class="w-6 h-6 text-gray-600 mb-1 peer-checked:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <span class="text-sm font-medium">Dispatcher</span>
-                            </label>
-                        </div>
-                        <div class="relative">
-                            <input type="radio" name="userRole" value="agency" id="roleAgency" class="hidden peer">
-                            <label for="roleAgency" class="flex flex-col items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all duration-300">
-                                <svg class="w-6 h-6 text-gray-600 mb-1 peer-checked:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                                <span class="text-sm font-medium">Agency</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Remember Me & Forgot Password -->
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <input type="checkbox" id="rememberMe" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                         <label for="rememberMe" class="ml-2 block text-sm text-gray-700">Remember me</label>
                     </div>
-                    <a href="#" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Forgot password?</a>
+                    <a href="forgot-password.html" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Forgot password?</a>
                 </div>
 
                 <!-- Login Button -->
                 <button type="submit" id="loginButton" class="w-full px-4 py-3 md:px-6 md:py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 shadow-md">
-                    <span id="buttonText">Sign In</span>
+                    <span id="buttonText">Log In</span>
                     <i class="fas fa-spinner fa-spin ml-2 hidden" id="buttonSpinner"></i>
                 </button>
             </form>
@@ -622,8 +554,8 @@
     </div>
 
     <!-- Register Modal -->
-    <div id="registerModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 relative" data-aos="zoom-in">
+    <div id="registerModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-y-auto p-6 md:p-8 relative" data-aos="zoom-in">
             <button onclick="closeRegisterModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -640,7 +572,6 @@
                 <p class="text-slate-600 text-sm md:text-base">Register for RES-Q LAGUNA emergency response platform</p>
             </div>
 
-            <!-- Registration Form -->
             <form id="registerForm" class="space-y-6">
                 <!-- Name Fields -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -651,7 +582,15 @@
                             </label>
                         </div>
                         <div class="relative">
-                            <input type="text" id="firstName" name="firstName" class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition" placeholder="First name" required>
+                            <input 
+                                type="text" 
+                                id="firstName" 
+                                name="firstName" 
+                                class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition" 
+                                placeholder="First name" 
+                                pattern="[A-Za-z\sñÑ\-']{2,50}"
+                                title="Letters and spaces only (2-50 characters)"
+                                required>
                             <i class="fas fa-check-circle absolute right-3 top-3.5 text-green-500 hidden" id="firstNameValid"></i>
                         </div>
                         <div id="firstNameError" class="form-error hidden text-red-500 text-sm mt-1 flex items-center">
@@ -666,7 +605,15 @@
                             </label>
                         </div>
                         <div class="relative">
-                            <input type="text" id="lastName" name="lastName" class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition" placeholder="Last name" required>
+                            <input 
+                                type="text" 
+                                id="lastName" 
+                                name="lastName" 
+                                class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition" 
+                                placeholder="Last name" 
+                                pattern="[A-Za-z\sñÑ\-']{2,50}"
+                                title="Letters and spaces only (2-50 characters)"
+                                required>
                             <i class="fas fa-check-circle absolute right-3 top-3.5 text-green-500 hidden" id="lastNameValid"></i>
                         </div>
                         <div id="lastNameError" class="form-error hidden text-red-500 text-sm mt-1 flex items-center">
@@ -685,7 +632,14 @@
                                 <i class="fas fa-user mr-2 text-green-500"></i>Middle Name (Optional)
                             </label>
                         </div>
-                        <input type="text" id="middleName" name="middleName" class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition" placeholder="Middle name">
+                        <input 
+                            type="text" 
+                            id="middleName" 
+                            name="middleName" 
+                            class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition" 
+                            placeholder="Middle name"
+                            pattern="[A-Za-z\sñÑ\-']*"
+                            title="Letters and spaces only">
                     </div>
 
                     <!-- Email Input -->
@@ -716,10 +670,21 @@
                             </label>
                         </div>
                         <div class="relative">
-                            <input type="password" id="regPassword" name="password" class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition" placeholder="Create a password" required>
+                            <input 
+                                type="password" 
+                                id="regPassword" 
+                                name="password" 
+                                class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition" 
+                                placeholder="Create a password" 
+                                maxlength="12"
+                                minlength="6"
+                                required>
                             <button type="button" id="toggleRegPassword" class="absolute right-3 top-3.5 text-gray-500 hover:text-green-600">
                                 <i class="fas fa-eye"></i>
                             </button>
+                        </div>
+                        <div id="passwordLength" class="text-xs text-gray-500 mt-1">
+                            Max 12 characters
                         </div>
                     </div>
                     
@@ -731,7 +696,14 @@
                             </label>
                         </div>
                         <div class="relative">
-                            <input type="password" id="confirmPassword" name="confirmPassword" class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition" placeholder="Confirm your password" required>
+                            <input 
+                                type="password" 
+                                id="confirmPassword" 
+                                name="confirmPassword" 
+                                class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition" 
+                                placeholder="Confirm your password" 
+                                maxlength="12"
+                                required>
                             <button type="button" id="toggleConfirmPassword" class="absolute right-3 top-3.5 text-gray-500 hover:text-green-600">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -798,13 +770,13 @@
             <div class="mt-6 text-center">
                 <p class="text-sm text-slate-600">
                     Already have an account? 
-                    <a href="#" onclick="showLoginModal()" class="text-blue-600 font-medium hover:text-blue-700">Sign in here</a>
+                    <a href="#" onclick="showLoginModal()" class="text-blue-600 font-medium hover:text-blue-700">Log in here</a>
                 </p>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="js/index.js"></script>
+    <script src="js/index.js" defer></script>
 </body>
 </html>

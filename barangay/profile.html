@@ -6,17 +6,30 @@
     <title>My Profile - RES-Q LAGUNA Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
     <link href="css/profile.css" rel="stylesheet">
+    <style>
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .hidden { display: none; }
+    </style>
 </head>
 <body class="bg-slate-50">
     <!-- Sidebar -->
     <div class="fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-slate-200 z-40">
         <div class="p-6 border-b border-slate-200">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-red-600 rounded-lg flex items-center justify-center">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center">
+                    <img src="../logo.jpg" alt="icon" class="w-10 h-10 object-contain" />
                 </div>
                 <div>
                     <h1 class="text-sm font-bold text-slate-900">RES-Q LAGUNA</h1>
@@ -38,11 +51,17 @@
                 </svg>
                 Cases
             </a>
-            <a href="resources.html" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition">
+            <a href="agency.html" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
-                Resources
+                Agencies
+            </a>
+            <a href="positions.html" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Barangay Positions
             </a>
             <a href="profile.html" class="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-600 rounded-lg font-medium">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,7 +69,7 @@
                 </svg>
                 My Profile
             </a>
-            <a href="../index.html" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition">
+            <a href="../index.html" onclick="logout(); return false;" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
@@ -81,8 +100,11 @@
                             <p class="text-sm font-medium text-slate-900" id="userName">Loading...</p>
                             <p class="text-xs text-slate-500" id="userRole">Barangay Captain</p>
                         </div>
-                        <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-red-600 rounded-lg flex items-center justify-center text-white font-semibold" id="userInitials">
-                            ...
+                        <div class="relative">
+                            <div id="userInitials" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-red-600 rounded-lg flex items-center justify-center text-white font-semibold">
+                                ...
+                            </div>
+                            <img id="userProfileImage" src="" alt="Profile" class="w-10 h-10 rounded-lg object-cover hidden">
                         </div>
                     </div>
                 </div>
@@ -110,7 +132,7 @@
                         <div class="bg-white rounded-xl border border-slate-200 p-6">
                             <div class="flex items-center justify-between mb-4">
                                 <h3 class="text-lg font-semibold text-slate-900">Personal Information</h3>
-                                <button onclick="saveProfile()" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                                <button onclick="saveProfile()" id="saveBtn" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
@@ -155,23 +177,24 @@
                         <div class="bg-white rounded-xl border border-slate-200 p-6">
                             <h3 class="text-lg font-semibold text-slate-900 mb-4">Profile Photo</h3>
                             <div class="flex flex-col items-center">
-                                <div id="profileAvatar" class="w-32 h-32 bg-gradient-to-br from-blue-600 to-red-600 rounded-full flex items-center justify-center text-white text-4xl font-bold mb-4">
-                                    ...
+                                <div class="relative">
+                                    <div id="profileAvatar" class="w-32 h-32 bg-gradient-to-br from-blue-600 to-red-600 rounded-full flex items-center justify-center text-white text-4xl font-bold">
+                                        ...
+                                    </div>
+                                    <img id="profileAvatarImg" src="" alt="Profile Photo" class="w-32 h-32 rounded-full object-cover hidden absolute top-0 left-0">
+                                    <img id="profilePhotoPreview" src="" alt="Preview" class="w-32 h-32 rounded-full object-cover hidden absolute top-0 left-0">
                                 </div>
-                                <div class="text-center mb-4">
+                                <div class="text-center mb-4 mt-4">
                                     <p class="font-medium text-slate-900" id="profileName">Loading...</p>
                                     <p class="text-sm text-slate-500" id="profileRole">Barangay Captain</p>
                                     <p class="text-xs text-blue-600 mt-1" id="profileBarangay">Loading barangay...</p>
                                 </div>
                                 <div class="flex gap-2">
-                                    <button onclick="document.getElementById('uploadPhoto').click()" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                                    <button id="changePhotoBtn" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
                                         Upload Photo
                                     </button>
-                                    <input type="file" id="uploadPhoto" class="hidden" accept="image/*">
-                                    <button onclick="removePhoto()" class="px-4 py-2 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
-                                        Remove
-                                    </button>
                                 </div>
+                                <p class="text-xs text-slate-500 mt-2">Click to upload a new profile photo</p>
                             </div>
                         </div>
 
@@ -210,37 +233,13 @@
                 </div>
                 <h3 class="text-lg font-semibold text-slate-900 mb-2">Failed to Load Profile</h3>
                 <p class="text-slate-600 mb-4" id="errorMessage">Unable to load your profile information.</p>
-                <button onclick="refreshProfile()" class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                <button id="retryButton" class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
                     Try Again
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Success Modal -->
-    <div id="successModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
-            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2">Success!</h3>
-            <p class="text-slate-600 mb-4" id="successMessage">Your profile has been updated successfully.</p>
-            <button onclick="closeModal('successModal')" class="w-full px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                Continue
-            </button>
-        </div>
-    </div>
-
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div class="bg-white rounded-xl p-6 flex items-center gap-3">
-            <div class="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <span class="text-slate-700">Loading...</span>
-        </div>
-    </div>
-
     <script src="js/profile.js"></script>
 </body>
-</html
+</html>

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incident Management - RES-Q LAGUNA Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .severity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .type-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .map-preview {
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .map-marker {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #ef4444;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .map-container {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .leaflet-container {
+            font-family: 'Inter', sans-serif;
+            z-index: 1;
+        }
+
+        .leaflet-popup-content {
+            font-size: 14px;
+        }
+
+        .leaflet-control-zoom a {
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            color: #4b5563;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background-color: #f3f4f6;
+        }
+        .incident-marker {
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+        }
+
+        .custom-marker {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
+        .leaflet-popup-content {
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <!-- Sidebar -->
+    <div class="fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-slate-200 z-40">
+        <div class="p-6 border-b border-slate-200">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center">
+                    <img src="../logo.jpg" alt="icon" class="w-10 h-10 object-contain" />
+                </div>
+                <div>
+                    <h1 class="text-sm font-bold text-slate-900">RES-Q LAGUNA</h1>
+                    <p class="text-xs text-slate-500">Admin Portal</p>
+                </div>
+            </div>
+        </div>
+        
+        <nav class="p-4 space-y-1">
+            <a href="dashboard.html" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-3.5a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                User Management
+            </a>
+            <a href="incidents.html" class="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-600 rounded-lg font-medium">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Incidents
+            </a>
+            <a href="../index.html" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="ml-64">
+        <!-- Top Navigation -->
+        <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
+            <div class="flex items-center justify-between px-8 py-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Incident Management</h1>
+                    <p class="text-sm text-slate-500">Monitor and manage all reported incidents</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
+                        <div class="text-right">
+                            <p class="text-sm font-medium text-slate-900" id="userName">Admin Management</p>
+                            <p class="text-xs text-slate-500">Administrator</p>
+                        </div>
+                        <button onclick="logout()" class="w-10 h-10 bg-gradient-to-br from-blue-600 to-red-600 rounded-lg flex items-center justify-center text-white font-semibold">
+                            A
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div class="p-8">
+            <!-- Filters -->
+            <div class="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Search</label>
+                        <div class="relative">
+                            <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" id="searchInput" placeholder="Search incidents..." class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Status</label>
+                        <select id="statusFilter" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="ongoing">Ongoing</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Severity</label>
+                        <select id="severityFilter" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">All Severity</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Type</label>
+                        <select id="typeFilter" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">All Types</option>
+                            <option value="fire">Fire</option>
+                            <option value="medical">Medical</option>
+                            <option value="police">Police</option>
+                            <option value="natural">Natural Disaster</option>
+                            <option value="accident">Accident</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="filterIncidents()" class="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                            Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="hidden flex flex-col items-center justify-center py-12">
+                <div class="loading-spinner mb-4"></div>
+                <p class="text-slate-600">Loading incidents...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" class="hidden flex flex-col items-center justify-center py-12">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-900 mb-2">Failed to load incidents</h3>
+                <p class="text-slate-600 mb-4" id="errorMessage">An error occurred while loading incidents</p>
+                <button id="retryButton" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Try Again
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-12">
+                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-900 mb-2">No incidents found</h3>
+                <p class="text-slate-600">There are no incidents matching your criteria.</p>
+            </div>
+
+            <!-- Incidents Table -->
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="py-3 px-6 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Incident</th>
+                                <th class="py-3 px-6 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Barangay</th>
+                                <th class="py-3 px-6 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Severity</th>
+                                <th class="py-3 px-6 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Status</th>
+                                <th class="py-3 px-6 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Reported</th>
+                                <th class="py-3 px-6 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200" id="incidentsTableBody">
+                            <!-- Incidents will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div id="paginationContainer" class="hidden flex items-center justify-between mt-8">
+                <div>
+                    <p class="text-sm text-slate-600" id="paginationInfo"></p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="prevPageBtn" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
+                        Previous
+                    </button>
+                    <button id="nextPageBtn" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
+                        Next
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Incident Details Modal -->
+    <div id="incidentModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity modal-overlay" aria-hidden="true"></div>
+            
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div class="inline-block w-full max-w-4xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between p-6 border-b border-slate-200">
+                    <div>
+                        <h3 class="text-xl font-semibold text-slate-900" id="modalIncidentTitle">Incident Details</h3>
+                    </div>
+                    <button id="closeModal" class="text-slate-400 hover:text-slate-500 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Modal Body -->
+                <div class="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+                    <div class="space-y-6">
+                        <!-- Status and Severity -->
+                        <div class="flex flex-wrap gap-2">
+                            <span id="modalIncidentSeverity" class="severity-badge">Loading...</span>
+                            <span id="modalIncidentStatus" class="status-badge">Loading...</span>
+                        </div>
+                        
+                        <!-- Main Content Grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Left Column: Incident Details -->
+                            <div class="lg:col-span-2 space-y-6">
+                                <!-- Description -->
+                                <div>
+                                    <h4 class="text-sm font-medium text-slate-700 mb-3">Description</h4>
+                                    <div class="bg-slate-50 rounded-lg p-4">
+                                        <p class="text-slate-700" id="modalIncidentDescription">Loading...</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Location and Map -->
+                                <div>
+                                    <h4 class="text-sm font-medium text-slate-700 mb-3">Location</h4>
+                                    <div class="space-y-3">
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p class="text-xs text-slate-500 mb-1">Barangay</p>
+                                                <p class="text-slate-900 font-medium" id="modalIncidentBarangay">Loading...</p>
+                                            </div>
+                                        </div>
+                                        <div class="map-container">
+                                            <div id="incidentMap" style="height: 250px; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Reporter Information -->
+                                <div>
+                                    <h4 class="text-sm font-medium text-slate-700 mb-3">Reporter Information</h4>
+                                    <div class="bg-slate-50 rounded-lg p-4">
+                                        <div class="flex items-center gap-3 mb-3">
+                                            <div>
+                                                <p class="font-medium text-slate-900" id="modalReporterName">Loading...</p>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <p class="text-xs text-slate-500 mb-1">Phone</p>
+                                                <p class="text-slate-900 font-medium" id="modalReporterPhone">Loading...</p>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs text-slate-500 mb-1">Email</p>
+                                                <p class="text-slate-900 font-medium" id="modalReporterEmail">Loading...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Incident Photo Section -->
+                                <div id="incidentPhotoSection" class="hidden">
+                                    <h4 class="text-sm font-medium text-slate-700 mb-3">Incident Photo</h4>
+                                    <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                                        <img id="incidentPhoto" src="" alt="Incident Photo" class="w-full h-64 object-cover rounded-lg">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Column: Timeline and Actions -->
+                            <div class="space-y-6">
+                                <!-- Timeline -->
+                                <div>
+                                    <h4 class="text-sm font-medium text-slate-700 mb-3">Timeline</h4>
+                                    <div class="space-y-4">
+                                        <div class="relative pl-6">
+                                            <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-200"></div>
+                                            <div class="absolute left-0 top-2 w-2 h-2 rounded-full bg-blue-500 -translate-x-1/2"></div>
+                                            <div>
+                                                <p class="text-xs font-medium text-slate-900">Reported</p>
+                                                <p class="text-xs text-slate-500" id="modalIncidentReported">Loading...</p>
+                                            </div>
+                                        </div>
+                                        <div class="relative pl-6">
+                                            <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-200"></div>
+                                            <div class="absolute left-0 top-2 w-2 h-2 rounded-full bg-yellow-500 -translate-x-1/2"></div>
+                                            <div>
+                                                <p class="text-xs font-medium text-slate-900">Last Updated</p>
+                                                <p class="text-xs text-slate-500" id="modalIncidentUpdated">Loading...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="flex items-center justify-between p-6 border-t border-slate-200 bg-slate-50">
+                    <div>
+                        <p class="text-sm text-slate-500" id="modalActionNote"></p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="closeModalBtn" class="px-4 py-2 bg-slate-600 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/incidents.js"></script>
+</body>
+</html>

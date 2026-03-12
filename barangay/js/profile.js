@@ -1,7 +1,13 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost/resq';
+const API_BASE_URL = 'https://greenyellow-hawk-206191.hostingersite.com';
 let userProfile = null;
 let barangays = [];
+
+// Cloudinary Configuration
+const CLOUDINARY_CLOUD_NAME = 'dgwp7j5l3'; 
+const CLOUDINARY_UPLOAD_PRESET = 'resq-profile'; 
+let cloudinaryWidget = null;
+let newProfilePhotoUrl = null;
 
 // Get stored user data from localStorage
 function getStoredUserData() {
@@ -89,15 +95,97 @@ async function loadBarangays() {
         }
     } catch (error) {
         console.error('Error loading barangays:', error);
-        // Use default barangays as fallback
-        const defaultBarangays = [
-            { id: 1, name: 'Barangay San Antonio' },
-            { id: 2, name: 'Barangay San Jose' },
-            { id: 3, name: 'Barangay San Isidro' },
-            { id: 4, name: 'Barangay San Roque' },
-            { id: 5, name: 'Barangay San Vicente' }
-        ];
-        populateBarangayDropdown(defaultBarangays);
+    }
+}
+
+// Initialize Cloudinary Upload Widget for profile photos
+function initializeCloudinaryWidget() {
+    cloudinaryWidget = cloudinary.createUploadWidget({
+        cloudName: CLOUDINARY_CLOUD_NAME,
+        uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+        sources: ['local', 'camera', 'url'],
+        multiple: false,
+        maxFileSize: 2000000, // 2MB for profile photos
+        clientAllowedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+        maxImageWidth: 1000,
+        maxImageHeight: 1000,
+        cropping: true, // Enable cropping for profile photos
+        croppingAspectRatio: 1, // Square aspect ratio for profile photos
+        croppingShowDimensions: true,
+        theme: 'minimal',
+        styles: {
+            palette: {
+                window: "#FFFFFF",
+                windowBorder: "#90A0B3",
+                tabIcon: "#0078FF",
+                menuIcons: "#5A616A",
+                textDark: "#000000",
+                textLight: "#FFFFFF",
+                link: "#0078FF",
+                action: "#FF620C",
+                inactiveTabIcon: "#0E2F5A",
+                error: "#F44235",
+                inProgress: "#0078FF",
+                complete: "#20B832",
+                sourceBg: "#E4EBF1"
+            }
+        }
+    }, (error, result) => {
+        if (!error && result && result.event === "success") {
+            // Photo uploaded successfully
+            const imageUrl = result.info.secure_url;
+            newProfilePhotoUrl = imageUrl;
+            
+            // Show preview of new photo in profilePhotoPreview
+            const profilePhotoPreview = document.getElementById('profilePhotoPreview');
+            const profileAvatarImg = document.getElementById('profileAvatarImg');
+            const profileAvatar = document.getElementById('profileAvatar');
+            
+            if (profilePhotoPreview) {
+                profilePhotoPreview.src = imageUrl;
+                profilePhotoPreview.classList.remove('hidden');
+            }
+            if (profileAvatarImg) {
+                profileAvatarImg.classList.add('hidden');
+            }
+            if (profileAvatar) {
+                profileAvatar.classList.add('hidden');
+            }
+            
+            // Show success message
+            Swal.fire({
+                icon: 'success',
+                title: 'Photo Uploaded',
+                text: 'Profile photo has been uploaded successfully! Click "Save Changes" to update your profile.',
+                timer: 3000,
+                showConfirmButton: false
+            });
+        }
+        
+        if (error) {
+            console.error('Cloudinary upload error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Upload Failed',
+                text: 'Failed to upload photo. Please try again.',
+                confirmButtonColor: '#ef4444'
+            });
+        }
+    });
+}
+
+// Change profile photo
+function changeProfilePhoto() {
+    if (cloudinaryWidget) {
+        cloudinaryWidget.open();
+    } else {
+        console.error('Cloudinary widget not initialized');
+        Swal.fire({
+            icon: 'error',
+            title: 'Upload Error',
+            text: 'Photo upload is not available at the moment. Please try again later.',
+            confirmButtonColor: '#ef4444'
+        });
     }
 }
 
@@ -139,10 +227,64 @@ function updateProfileDisplay(profile) {
     document.getElementById('profileRole').textContent = profile.role || 'Barangay Official';
     document.getElementById('profileBarangay').textContent = getBarangayName(profile.baranggay_id);
     
-    // Update avatar
+    // Get all avatar elements
+    const userInitials = document.getElementById('userInitials');
+    const userProfileImage = document.getElementById('userProfileImage');
+    const profileAvatar = document.getElementById('profileAvatar');
+    const profileAvatarImg = document.getElementById('profileAvatarImg');
+    const profilePhotoPreview = document.getElementById('profilePhotoPreview');
+    
+    // Get initials for display
     const initials = getInitials(profile.first_name, profile.last_name);
-    document.getElementById('userInitials').textContent = initials;
-    document.getElementById('profileAvatar').textContent = initials;
+    
+    // Check if profile photo exists
+    if (profile.profile && profile.profile.trim() !== '') {
+        // Get existing profile photo URL
+        const profilePhotoUrl = profile.profile;
+        
+        // 1. Update top navigation (user initials and profile image)
+        if (userProfileImage) {
+            userProfileImage.src = profilePhotoUrl;
+            userProfileImage.classList.remove('hidden');
+        }
+        if (userInitials) {
+            userInitials.classList.add('hidden');
+        }
+        
+        // 2. Update main profile section
+        if (profileAvatarImg) {
+            profileAvatarImg.src = profilePhotoUrl;
+            profileAvatarImg.classList.remove('hidden');
+        }
+        if (profileAvatar) {
+            profileAvatar.classList.add('hidden');
+        }
+        
+        // 3. Update profilePhotoPreview with existing profile photo
+        if (profilePhotoPreview) {
+            profilePhotoPreview.src = profilePhotoUrl;
+            profilePhotoPreview.classList.add('hidden'); // Keep it hidden initially (only show when new upload)
+        }
+    } else {
+        // No profile photo exists - show initials
+        if (userInitials) {
+            userInitials.textContent = initials;
+            userInitials.classList.remove('hidden');
+        }
+        if (userProfileImage) {
+            userProfileImage.classList.add('hidden');
+        }
+        if (profileAvatar) {
+            profileAvatar.textContent = initials;
+            profileAvatar.classList.remove('hidden');
+        }
+        if (profileAvatarImg) {
+            profileAvatarImg.classList.add('hidden');
+        }
+        if (profilePhotoPreview) {
+            profilePhotoPreview.classList.add('hidden');
+        }
+    }
     
     // Update account status
     document.getElementById('accountStatus').textContent = profile.status || 'Unknown';
@@ -159,8 +301,9 @@ function updateProfileDisplay(profile) {
 
 // Get barangay name from ID
 function getBarangayName(barangayId) {
-    const barangay = barangays.find(b => b.id == barangayId);
-    return barangay ? (barangay.name || barangay.baranggay) : 'Barangay not set';
+    if (!barangayId || !barangays.length) return 'Barangay not set';
+    const barangay = barangays.find(b => b.baranggay_id == barangayId);
+    return barangay ? (barangay.baranggay || barangay.name) : 'Barangay not set';
 }
 
 // Get initials from name
@@ -173,12 +316,17 @@ function getInitials(firstName, lastName) {
 // Format date
 function formatDate(dateString) {
     if (!dateString) return 'Unknown';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return 'Unknown';
+    }
 }
 
 // Save profile data
@@ -193,6 +341,11 @@ async function saveProfile() {
         phone: document.getElementById('phone').value.trim(),
         baranggay_id: document.getElementById('barangayId').value
     };
+
+    // Add profile photo URL if new photo was uploaded
+    if (newProfilePhotoUrl) {
+        updateData.profile = newProfilePhotoUrl;
+    }
 
     // Validation
     if (!updateData.first_name || !updateData.last_name) {
@@ -224,6 +377,21 @@ async function saveProfile() {
         });
 
         if (data.success) {
+            // Update local user data
+            userProfile = data.data;
+            
+            // Update localStorage with new photo if exists
+            if (newProfilePhotoUrl) {
+                const storedUserData = getStoredUserData();
+                if (storedUserData && storedUserData.user) {
+                    storedUserData.user.profile = newProfilePhotoUrl;
+                    localStorage.setItem('userData', JSON.stringify(storedUserData.user));
+                }
+            }
+            
+            // Reset photo variables
+            newProfilePhotoUrl = null;
+            
             Swal.fire({
                 icon: 'success',
                 title: 'Success!',
@@ -232,6 +400,7 @@ async function saveProfile() {
                 timer: 2000,
                 showConfirmButton: false
             });
+            
             // Reload profile to get updated data
             await loadUserProfile();
         } else {
@@ -254,6 +423,9 @@ async function saveProfile() {
 async function refreshProfile() {
     showLoading();
     try {
+        // Reset photo variables
+        newProfilePhotoUrl = null;
+        
         await Promise.all([loadUserProfile(), loadBarangays()]);
         Swal.fire({
             icon: 'success',
@@ -297,32 +469,6 @@ function exportData() {
     }
 }
 
-// Remove profile photo
-function removePhoto() {
-    Swal.fire({
-        title: 'Remove Profile Photo?',
-        text: 'Are you sure you want to remove your profile photo?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#2563eb',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, remove it',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            console.log('[v0] Removing profile photo');
-            Swal.fire({
-                icon: 'success',
-                title: 'Removed!',
-                text: 'Profile photo removed successfully.',
-                confirmButtonColor: '#10b981',
-                timer: 1500,
-                showConfirmButton: false
-            });
-        }
-    });
-}
-
 // UI Helper Functions
 function showLoading() {
     document.getElementById('loadingState').classList.remove('hidden');
@@ -335,6 +481,10 @@ function showContent() {
     document.getElementById('loadingState').classList.add('hidden');
     document.getElementById('profileContent').classList.remove('hidden');
     document.getElementById('errorState').classList.add('hidden');
+    document.body.classList.remove('loading');
+}
+
+function hideLoading() {
     document.body.classList.remove('loading');
 }
 
@@ -391,6 +541,26 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     try {
         await Promise.all([loadUserProfile(), loadBarangays()]);
+        initializeCloudinaryWidget();
+        
+        // Add event listener for change photo button
+        const changePhotoBtn = document.getElementById('changePhotoBtn');
+        if (changePhotoBtn) {
+            changePhotoBtn.addEventListener('click', changeProfilePhoto);
+        }
+        
+        // Add event listener for save button
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', saveProfile);
+        }
+        
+        // Add event listener for retry button
+        const retryButton = document.getElementById('retryButton');
+        if (retryButton) {
+            retryButton.addEventListener('click', refreshProfile);
+        }
+        
     } catch (error) {
         showError('Failed to initialize profile: ' + error.message);
     }

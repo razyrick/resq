@@ -9,49 +9,49 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --info: #3b82f6;
-            --dark: #1f2937;
-            --light: #f9fafb;
-        }
-        
         body {
             font-family: 'Inter', sans-serif;
         }
         
-        .mesh-status {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        .contact-item {
+            transition: all 0.2s ease;
         }
         
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: .5;
-            }
+        .contact-item:hover {
+            background-color: #f8fafc;
         }
         
-        .resource-card {
+        .district-tab {
             transition: all 0.3s ease;
         }
         
-        .resource-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        .district-tab.active {
+            background-color: #3b82f6;
+            color: white;
         }
         
-        .emergency-card {
-            transition: all 0.3s ease;
+        /* Custom scrollbar for barangay list */
+        .barangay-list {
+            max-height: 400px;
+            overflow-y: auto;
         }
         
-        .emergency-card:hover {
-            transform: scale(1.02);
+        .barangay-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .barangay-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .barangay-list::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        
+        .barangay-list::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
         }
     </style>
 </head>
@@ -66,20 +66,12 @@
                     </button>
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-exclamation-triangle text-white"></i>
+                            <img src="../logo.jpg" alt="icon" class="w-10 h-10 object-contain" />
                         </div>
                         <div>
-                            <h1 class="text-lg font-bold text-gray-900">Emergency Resources</h1>
-                            <p class="text-xs text-gray-500">Help when you need it</p>
+                            <h1 class="text-lg font-bold text-gray-900">Emergency Contacts</h1>
+                            <p class="text-xs text-gray-500">LADRRMO Hotline Numbers</p>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="flex items-center gap-4">
-                    <!-- Mesh Status Indicator -->
-                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full">
-                        <div id="meshStatus" class="w-2.5 h-2.5 rounded-full bg-green-500 mesh-status"></div>
-                        <span id="meshStatusText" class="text-xs font-medium text-gray-700">Connected</span>
                     </div>
                 </div>
             </div>
@@ -94,8 +86,8 @@
                 <div class="flex items-center gap-3">
                     <img id="sidebarUserImage" src="/placeholder.svg?height=40&width=40" alt="User" class="w-10 h-10 rounded-full">
                     <div>
-                        <p id="sidebarUserName" class="font-medium text-gray-900">Juan Dela Cruz</p>
-                        <p id="sidebarUserEmail" class="text-xs text-gray-500">juan.delacruz@gmail.com</p>
+                        <p id="sidebarUserName" class="font-medium text-gray-900">Loading...</p>
+                        <p id="sidebarUserEmail" class="text-xs text-gray-500">Loading...</p>
                     </div>
                 </div>
                 <button id="closeSidebar" class="p-1 text-gray-500 hover:text-gray-700">
@@ -123,20 +115,16 @@
                 </a>
                 <a href="history.html" class="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                     <i class="fas fa-history text-gray-600 w-5"></i>
-                    <span>Report History</span>
+                    <span class="font-medium">Report History</span>
                 </a>
                 <a href="resources.html" class="flex items-center gap-3 px-3 py-2 text-gray-700 bg-blue-50 rounded-lg">
                     <i class="fas fa-info-circle text-blue-600 w-5"></i>
-                    <span class="font-medium">Emergency Resources</span>
+                    <span>Emergency Resources</span>
                 </a>
             </div>
             
             <!-- Sidebar Footer -->
             <div class="p-4 border-t border-gray-200">
-                <div class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg mb-3">
-                    <div id="meshStatusSidebar" class="w-2.5 h-2.5 rounded-full bg-green-500 mesh-status"></div>
-                    <span class="text-xs font-medium text-gray-700">Mesh: Connected</span>
-                </div>
                 <a href="../index.html" class="flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full">
                     <i class="fas fa-sign-out-alt w-5"></i>
                     <span>Logout</span>
@@ -146,476 +134,1155 @@
     </div>
 
     <!-- Main Content -->
-    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24">
-        <!-- Emergency Quick Actions -->
-        <div class="mb-8">
-            <h2 class="text-xl font-bold text-gray-900 mb-4">Emergency Quick Actions</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Emergency Call Card -->
-                <div class="emergency-card bg-red-600 text-white rounded-lg shadow-lg overflow-hidden">
-                    <div class="p-6">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="w-12 h-12 bg-red-700 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-phone-alt text-xl"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-lg">Emergency Call</h3>
-                                <p class="text-red-100 text-sm">Immediate assistance</p>
-                            </div>
-                        </div>
-                        <p class="text-red-100 text-sm mb-4">Call emergency services for immediate help</p>
-                        <button class="w-full py-3 bg-white text-red-600 font-bold rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center gap-2">
-                            <i class="fas fa-phone"></i>
-                            Call 911 / 117
-                        </button>
-                    </div>
-                </div>
-
-                <!-- SOS Alert Card -->
-                <div class="emergency-card bg-orange-500 text-white rounded-lg shadow-lg overflow-hidden">
-                    <div class="p-6">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-bell text-xl"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-lg">SOS Alert</h3>
-                                <p class="text-orange-100 text-sm">Send emergency signal</p>
-                            </div>
-                        </div>
-                        <p class="text-orange-100 text-sm mb-4">Broadcast your location to nearby responders</p>
-                        <button class="w-full py-3 bg-white text-orange-600 font-bold rounded-lg hover:bg-orange-50 transition-colors flex items-center justify-center gap-2">
-                            <i class="fas fa-location-arrow"></i>
-                            Send SOS Signal
-                        </button>
-                    </div>
-                </div>
-
-                <!-- First Aid Guide Card -->
-                <div class="emergency-card bg-blue-600 text-white rounded-lg shadow-lg overflow-hidden">
-                    <div class="p-6">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="w-12 h-12 bg-blue-700 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-first-aid text-xl"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-lg">First Aid Guide</h3>
-                                <p class="text-blue-100 text-sm">Emergency procedures</p>
-                            </div>
-                        </div>
-                        <p class="text-blue-100 text-sm mb-4">Step-by-step emergency medical instructions</p>
-                        <button class="w-full py-3 bg-white text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
-                            <i class="fas fa-book-medical"></i>
-                            View Guide
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Emergency Contacts -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- LADRRMO Hotline Numbers -->
         <section class="mb-8">
-            <h2 class="text-xl font-bold text-gray-900 mb-4">Emergency Contacts</h2>
-            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                <div class="divide-y divide-gray-200">
-                    <!-- Police -->
-                    <div class="p-4 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-shield-alt text-blue-600"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900">Philippine National Police</h3>
-                                <p class="text-sm text-gray-600">Emergency response & public safety</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
-                                <i class="fas fa-phone"></i>
-                                Call
-                            </button>
-                            <span class="text-lg font-bold text-gray-900">117 / 911</span>
-                        </div>
-                    </div>
-
-                    <!-- Fire Department -->
-                    <div class="p-4 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-fire text-red-600"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900">Bureau of Fire Protection</h3>
-                                <p class="text-sm text-gray-600">Fire emergencies & rescue</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <button class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
-                                <i class="fas fa-phone"></i>
-                                Call
-                            </button>
-                            <span class="text-lg font-bold text-gray-900">117 / 911</span>
-                        </div>
-                    </div>
-
-                    <!-- Medical Emergency -->
-                    <div class="p-4 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-ambulance text-green-600"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900">Emergency Medical Services</h3>
-                                <p class="text-sm text-gray-600">Medical emergencies & ambulance</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <button class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                                <i class="fas fa-phone"></i>
-                                Call
-                            </button>
-                            <span class="text-lg font-bold text-gray-900">117 / 911</span>
-                        </div>
-                    </div>
-
-                    <!-- Coast Guard -->
-                    <div class="p-4 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-ship text-indigo-600"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900">Philippine Coast Guard</h3>
-                                <p class="text-sm text-gray-600">Maritime emergencies & rescue</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <button class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
-                                <i class="fas fa-phone"></i>
-                                Call
-                            </button>
-                            <span class="text-lg font-bold text-gray-900">(02) 8527-8481</span>
-                        </div>
-                    </div>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-900">Emergency Contacts</h2>
+                <div class="text-sm text-gray-500">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Laguna Disaster Risk Reduction and Management Office
                 </div>
             </div>
-        </section>
-
-        <!-- Emergency Guides -->
-        <section class="mb-8">
-            <h2 class="text-xl font-bold text-gray-900 mb-4">Emergency Preparedness Guides</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Earthquake Guide -->
-                <div class="resource-card bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="p-4">
-                        <div class="flex items-start gap-3 mb-3">
-                            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-mountain text-yellow-600 text-xl"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900 mb-1">Earthquake Safety</h3>
-                                <p class="text-sm text-gray-600">Drop, Cover, and Hold On procedures</p>
-                            </div>
-                        </div>
-                        <ul class="text-sm text-gray-600 space-y-1 mb-4">
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Identify safe spots in each room
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Create emergency supply kit
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Practice family emergency plan
-                            </li>
-                        </ul>
-                        <button class="w-full px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 transition-colors">
-                            View Full Guide
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Flood Guide -->
-                <div class="resource-card bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="p-4">
-                        <div class="flex items-start gap-3 mb-3">
-                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-water text-blue-600 text-xl"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900 mb-1">Flood Preparedness</h3>
-                                <p class="text-sm text-gray-600">Staying safe during floods</p>
-                            </div>
-                        </div>
-                        <ul class="text-sm text-gray-600 space-y-1 mb-4">
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Move to higher ground immediately
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Avoid walking through moving water
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Do not drive in flooded areas
-                            </li>
-                        </ul>
-                        <button class="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                            View Full Guide
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Typhoon Guide -->
-                <div class="resource-card bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="p-4">
-                        <div class="flex items-start gap-3 mb-3">
-                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-wind text-purple-600 text-xl"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900 mb-1">Typhoon Preparedness</h3>
-                                <p class="text-sm text-gray-600">Before, during, and after typhoons</p>
-                            </div>
-                        </div>
-                        <ul class="text-sm text-gray-600 space-y-1 mb-4">
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Secure your home and property
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Prepare emergency supplies
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Monitor weather updates
-                            </li>
-                        </ul>
-                        <button class="w-full px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
-                            View Full Guide
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Fire Safety Guide -->
-                <div class="resource-card bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="p-4">
-                        <div class="flex items-start gap-3 mb-3">
-                            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-fire text-red-600 text-xl"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900 mb-1">Fire Safety</h3>
-                                <p class="text-sm text-gray-600">Prevention and emergency response</p>
-                            </div>
-                        </div>
-                        <ul class="text-sm text-gray-600 space-y-1 mb-4">
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Install smoke detectors
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Create escape plan
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check text-green-500 text-xs"></i>
-                                Know how to use fire extinguisher
-                            </li>
-                        </ul>
-                        <button class="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">
-                            View Full Guide
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Emergency Kit Checklist -->
-        <section>
-            <h2 class="text-xl font-bold text-gray-900 mb-4">Emergency Kit Checklist</h2>
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                            <i class="fas fa-utensils text-blue-600"></i>
-                            Food & Water
-                        </h3>
-                        <div class="space-y-2">
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" class="rounded text-blue-600">
-                                <span class="text-sm text-gray-700">3-day water supply (1 gallon per person per day)</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" class="rounded text-blue-600">
-                                <span class="text-sm text-gray-700">Non-perishable food (3-day supply)</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" class="rounded text-blue-600">
-                                <span class="text-sm text-gray-700">Manual can opener</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                            <i class="fas fa-first-aid text-red-600"></i>
-                            Medical & Safety
-                        </h3>
-                        <div class="space-y-2">
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" class="rounded text-blue-600">
-                                <span class="text-sm text-gray-700">First aid kit</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" class="rounded text-blue-600">
-                                <span class="text-sm text-gray-700">Prescription medications</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" class="rounded text-blue-600">
-                                <span class="text-sm text-gray-700">Flashlight with extra batteries</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-6 pt-4 border-t border-gray-200">
-                    <button class="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-                        <i class="fas fa-download"></i>
-                        Download Complete Checklist
+            
+            <!-- Tabs -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
+                <div class="flex overflow-x-auto">
+                    <button class="district-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-tab="ladrrmo">
+                        LADRRMO Contacts
+                    </button>
+                    <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-tab="barangay">
+                        Barangay Contacts
                     </button>
                 </div>
             </div>
-        </section>
-    </main>
-
-    <!-- Bottom Navigation for Mobile -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40">
-        <div class="flex justify-around items-center h-16">
-            <a href="home.html" class="flex flex-col items-center gap-1 text-gray-600 hover:text-blue-600">
-                <i class="fas fa-home text-lg"></i>
-                <span class="text-xs">Home</span>
-            </a>
-            <a href="alerts.html" class="flex flex-col items-center gap-1 text-gray-600 hover:text-blue-600">
-                <i class="fas fa-bell text-lg"></i>
-                <span class="text-xs">Alerts</span>
-            </a>
-            <a href="report.html" class="flex flex-col items-center gap-1 text-gray-600 hover:text-blue-600">
-                <div class="w-12 h-12 -mt-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center shadow-lg">
-                    <i class="fas fa-plus text-white text-lg"></i>
+            
+            <!-- LADRRMO Contacts Tab -->
+            <div id="ladrrmo-tab" class="tab-content">
+                <!-- District Tabs -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
+                    <div class="flex overflow-x-auto">
+                        <button class="district-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-district="1">
+                            1st District
+                        </button>
+                        <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="2">
+                            2nd District
+                        </button>
+                        <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="3">
+                            3rd District
+                        </button>
+                        <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="4">
+                            4th District
+                        </button>
+                    </div>
                 </div>
-            </a>
-            <a href="profile.html" class="flex flex-col items-center gap-1 text-gray-600 hover:text-blue-600">
-                <i class="fas fa-user text-lg"></i>
-                <span class="text-xs">Profile</span>
-            </a>
-            <button id="mobileMenuToggle" class="flex flex-col items-center gap-1 text-blue-600">
-                <i class="fas fa-info-circle text-lg"></i>
-                <span class="text-xs font-medium">Resources</span>
-            </button>
-        </div>
-    </nav>
-
-    <script>
-        // Sidebar functionality
-        const sidebar = document.getElementById('sidebar');
-        const menuToggle = document.getElementById('menuToggle');
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const closeSidebar = document.getElementById('closeSidebar');
-        
-        function openSidebar() {
-            sidebar.classList.remove('-translate-x-full');
-        }
-        
-        function closeSidebarFunc() {
-            sidebar.classList.add('-translate-x-full');
-        }
-        
-        menuToggle.addEventListener('click', openSidebar);
-        mobileMenuToggle.addEventListener('click', openSidebar);
-        closeSidebar.addEventListener('click', closeSidebarFunc);
-        
-        // Close sidebar when clicking outside
-        document.addEventListener('click', (event) => {
-            const isClickInsideSidebar = sidebar.contains(event.target);
-            const isClickOnMenuToggle = menuToggle.contains(event.target) || mobileMenuToggle.contains(event.target);
-            
-            if (!isClickInsideSidebar && !isClickOnMenuToggle && !sidebar.classList.contains('-translate-x-full')) {
-                closeSidebarFunc();
-            }
-        });
-
-        // Emergency call functionality
-        document.querySelectorAll('button').forEach(button => {
-            if (button.textContent.includes('Call')) {
-                button.addEventListener('click', function() {
-                    const service = this.closest('.p-4').querySelector('h3').textContent;
-                    if (confirm(`Call ${service}? This will open your phone dialer.`)) {
-                        // In a real app, this would initiate a phone call
-                        alert(`Calling ${service}...`);
-                    }
-                });
-            }
-        });
-
-        // SOS Alert functionality
-        document.querySelector('button:contains("Send SOS Signal")').addEventListener('click', function() {
-            if (confirm('Send SOS emergency signal? This will alert nearby responders with your location.')) {
-                // Show loading state
-                const originalText = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending SOS...';
-                this.disabled = true;
                 
-                // Simulate SOS sending
-                setTimeout(() => {
-                    this.innerHTML = '<i class="fas fa-check"></i> SOS Sent!';
-                    alert('SOS signal sent! Nearby responders have been alerted.');
-                    
-                    // Reset button after 3 seconds
-                    setTimeout(() => {
-                        this.innerHTML = originalText;
-                        this.disabled = false;
-                    }, 3000);
-                }, 2000);
-            }
-        });
+                <!-- District Contacts -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <!-- 1st District -->
+                    <div id="district-1" class="district-content">
+                        <div class="divide-y divide-gray-200">
+                            <!-- San Pedro -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Vernet Nico A. Pavino</h3>
+                                                <p class="text-sm text-gray-600">SAN PEDRO</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (02) 8403-2648
+                                                    </span>
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0998-594-1743
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">vernetnicopavino@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09985941743">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
-        // Guide buttons functionality
-        document.querySelectorAll('button:contains("View Full Guide")').forEach(button => {
-            button.addEventListener('click', function() {
-                const guideTitle = this.closest('.resource-card').querySelector('h3').textContent;
-                alert(`Opening ${guideTitle}...\n\nIn a real app, this would open a detailed guide with step-by-step instructions.`);
-            });
-        });
+                            <!-- Biñan -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Ronaldo G. Roscain, MBA</h3>
+                                                <p class="text-sm text-gray-600">BIÑAN</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (049) 513-5001
+                                                    </span>
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0917-120-8911
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">cdrrmo@binan.gov.ph</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09171208911">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
-        // Download checklist
-        document.querySelector('button:contains("Download Complete Checklist")').addEventListener('click', function() {
-            alert('Downloading Emergency Preparedness Checklist...\n\nIn a real app, this would download a PDF checklist.');
-        });
+                            <!-- Sta. Rosa -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Antonino Z. Lu</h3>
+                                                <p class="text-sm text-gray-600">STA. ROSA</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (049) 534-9999
+                                                    </span>
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0995-650-1943
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">cdrrmo.santarosa@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09956501943">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        // Mesh status simulation
-        function updateMeshStatus() {
-            const statuses = [
-                { color: 'bg-green-500', text: 'Connected', class: 'mesh-status' },
-                { color: 'bg-yellow-500', text: 'Searching', class: 'mesh-status' },
-                { color: 'bg-red-500', text: 'Offline', class: '' }
-            ];
-            
-            const status = statuses[0]; // Default to connected
-            
-            document.getElementById('meshStatus').className = `w-2.5 h-2.5 rounded-full ${status.color} ${status.class}`;
-            document.getElementById('meshStatusText').textContent = status.text;
-            document.getElementById('meshStatusSidebar').className = `w-2.5 h-2.5 rounded-full ${status.color} ${status.class}`;
-        }
+                    <!-- 2nd District -->
+                    <div id="district-2" class="district-content hidden">
+                        <div class="divide-y divide-gray-200">
+                            <!-- Cabuyao -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Mr. Colin B. Garcia</h3>
+                                                <p class="text-sm text-gray-600">CABUYAO</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (049) 508-1159
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">cdrrmo.cabuyao@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="0495081159">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
-        // Initialize
-        updateMeshStatus();
-        setInterval(updateMeshStatus, 5000);
-    </script>
-    <script src="js/user.js"></script>
+                            <!-- Calamba -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Engr. Noriel Habaña</h3>
+                                                <p class="text-sm text-gray-600">CALAMBA</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        545-6789 loc. 1023
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">cdrrmo_calambacity@yahoo.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="5456789">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Los Baños -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Cynthia Quintans</h3>
+                                                <p class="text-sm text-gray-600">LOS BAÑOS</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        530-2953 loc. 100
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">mdrrmo.lb@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="5302953">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bay -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Mary Grace Saul-Cariño</h3>
+                                                <p class="text-sm text-gray-600">BAY</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (049) 304-1131
+                                                    </span>
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0917-155-1461
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">mdrrmo@bay.gov.ph</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09171551461">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3rd District -->
+                    <div id="district-3" class="district-content hidden">
+                        <div class="divide-y divide-gray-200">
+                            <!-- Calauan -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Roy Dalawangbayan</h3>
+                                                <p class="text-sm text-gray-600">CALAUAN</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (049) 543-6312
+                                                    </span>
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0910-323-1784
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">mdrrmcalauan2024@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09103231784">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Victoria -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">June Carlo Segovia</h3>
+                                                <p class="text-sm text-gray-600">VICTORIA</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (049) 554-4563
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">junecarlo.segovia@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="0495544563">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Alaminos -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Christian Sabinosa</h3>
+                                                <p class="text-sm text-gray-600">ALAMINOS</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (049) 530-1623
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">alaminosmdrrmo@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="0495301623">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Rizal -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Russel John Isles</h3>
+                                                <p class="text-sm text-gray-600">RIZAL</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        576-7686
+                                                    </span>
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0998-555-1066
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">rizal.lagunamdrrmo@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09985551066">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Nagcarlan -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Annielyn O. Magsino</h3>
+                                                <p class="text-sm text-gray-600">NAGCARLAN</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (049) 559-4532
+                                                    </span>
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0939-257-3066
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">mdrrmo.nagcarlan@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09392573066">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Liliw -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Krich Carlo Monfero</h3>
+                                                <p class="text-sm text-gray-600">LILIW</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0945-135-0537
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">mdrrmliliw@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09451350537">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- San Pablo -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Arvin Carandang</h3>
+                                                <p class="text-sm text-gray-600">SAN PABLO</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (049) 800-0405
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">cdrrmosanpablocity@yahoo.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="0498000405">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4th District -->
+                    <div id="district-4" class="district-content hidden">
+                        <div class="divide-y divide-gray-200">
+                            <!-- Pila -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Jerome Anthony Carrillo</h3>
+                                                <p class="text-sm text-gray-600">PILA</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0905-440-7240
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">jaocarrillo@yahoo.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09054407240">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sta. Cruz -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Joshua Federick Vitaliz</h3>
+                                                <p class="text-sm text-gray-600">STA. CRUZ</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-phone text-gray-500"></i>
+                                                        (049) 557-1047
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">mdrrmo.scl@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="0495571047">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Pagsanjan -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Mariz Salvatierra</h3>
+                                                <p class="text-sm text-gray-600">PAGSANJAN</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0918-208-9305
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">pagsanjanmdrrmo3@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09182089305">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Magdalena -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-user text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-semibold text-gray-900">Kim D. Licong</h3>
+                                                <p class="text-sm text-gray-600">MAGDALENA</p>
+                                                <div class="mt-1 flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                        <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                        0905-424-4842
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <span class="text-xs text-gray-500">Email:</span>
+                                                    <span class="text-xs text-blue-600 ml-1">magdalena.mdrrmo@gmail.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09054244842">
+                                            <i class="fas fa-phone"></i>
+                                            Call
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Majayjay -->
+                            <div class="p-4 contact-item">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Reyjohn Libato</h3>
+                                            <p class="text-sm text-gray-600">MAJAYJAY</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                    0917-540-2030
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">majayjaymdrrmo0922@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09175402030">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cavinti -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Judith Ruazol</h3>
+                                            <p class="text-sm text-gray-600">CAVINTI</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                    0923-082-2070
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">mdrrmocavintilaguna@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09230822070">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Luisiana -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Joveña Esperanza</h3>
+                                            <p class="text-sm text-gray-600">LUISIANA</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>
+                                                    (049) 523-4846 loc. 118
+                                                </span>
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                    0969-196-6505
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">luisianamdrrmo@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09691966505">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lumban -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Wilfredo C. Presto</h3>
+                                            <p class="text-sm text-gray-600">LUMBAN</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                    0965-395-1431
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">lumbanmdrrmo@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09653951431">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kalayaan -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Reinelsa Corpuz</h3>
+                                            <p class="text-sm text-gray-600">KALAYAAN</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>
+                                                    (049) 523-3780
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">baby_1006@yahoo.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="0495233780">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Paete -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Albert V. Noceja</h3>
+                                            <p class="text-sm text-gray-600">PAETE</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                    0999-478-8266
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">paete.mdrrmo@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09994788266">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pakil -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Francis Raymond R. Hidalgo</h3>
+                                            <p class="text-sm text-gray-600">PAKIL</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>
+                                                    (049) 530-3603
+                                                </span>
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                    0950-114-6953
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">mdrrmopakil2017@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09501146953">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pangil -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Janeiro D. Acaylar</h3>
+                                            <p class="text-sm text-gray-600">PANGIL</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>
+                                                    (049) 254-0136
+                                                </span>
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                    0945-819-3181
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">mdrrmopangil2023@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09458193181">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Siniloan -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Ronaldo Cajano</h3>
+                                            <p class="text-sm text-gray-600">SINILOAN</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>
+                                                    (049) 523-9611
+                                                </span>
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                    0929-630-3715
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">mdrrmo.siniloan2025@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09296303715">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Famy -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Arlon Chavez</h3>
+                                            <p class="text-sm text-gray-600">FAMY</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                    0977-458-9632
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">arlonchavez@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09774589632">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mabitac -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Magno Artitchea</h3>
+                                            <p class="text-sm text-gray-600">MABITAC</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>
+                                                    (049) 523-1122
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">mdrrmomabitac@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="0495231122">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sta. Maria -->
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Marinie DJ. Palicpic</h3>
+                                            <p class="text-sm text-gray-600">STA. MARIA</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>
+                                                    0948-344-4126
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="text-xs text-gray-500">Email:</span>
+                                                <span class="text-xs text-blue-600 ml-1">mdrrmosantamaria@gmail.com</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09483444126">
+                                        <i class="fas fa-phone"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Barangay Contacts Tab -->
+<div id="barangay-tab" class="tab-content hidden">
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+
+        <!-- Loading State -->
+        <div id="barangayLoading" class="p-8 text-center">
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <p class="text-gray-600">Loading barangay information...</p>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="barangayError" class="hidden p-8 text-center">
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                </div>
+                <p id="barangayErrorMessage" class="text-gray-600">Failed to load barangay information</p>
+                <button id="barangayRetryBtn" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                    Try Again
+                </button>
+            </div>
+        </div>
+
+        <!-- Barangay List -->
+        <div id="barangayList" class="hidden">
+            <div class="barangay-list">
+                <!-- Barangay items will be populated here -->
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="barangayEmpty" class="hidden p-8 text-center">
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-map-marker-alt text-gray-400 text-xl"></i>
+                </div>
+                <p class="text-gray-600">No barangays found</p>
+            </div>
+        </div>
+    </div>
+</div>
+</section>
+</main>
+
+<script src="js/resources.js"></script>
 </body>
 </html>
