@@ -240,12 +240,16 @@
                     <div class="space-y-4 sm:space-y-6">
                         <!-- Status Progress Bar -->
                         <div class="detail-section">
-                            <h4>
-                                <i class="fas fa-tasks"></i>
+                            <h4 id="reportStatusHeading">
+                                <i class="fas fa-route" aria-hidden="true"></i>
                                 Report Status
                             </h4>
-                            <div class="status-progress" id="statusProgress">
-                                <!-- Status steps will be dynamically added here -->
+                            <div class="status-tracker" aria-labelledby="reportStatusHeading">
+                                <div class="status-tracker-intro">
+                                    <span class="status-tracker-intro-label">Report lifecycle</span>
+                                    <p class="status-tracker-caption" id="statusProgressCaption"></p>
+                                </div>
+                                <div class="status-progress" id="statusProgress" role="list"></div>
                             </div>
                         </div>
 

@@ -278,32 +278,50 @@ function calculateStatus(incident) {
     return 'resolved';
 }
 
-// Create status progress bar
-function createStatusProgress(status) {
+function getStatusProgressCaption(statusRaw) {
+    const status = typeof statusRaw === 'string' ? statusRaw : 'pending';
+    const captions = {
+        pending:
+            'Your report is in the queue. Responders will review it soon.',
+        ongoing:
+            'This report is being handled. Agencies or responders are actively involved.',
+        resolved: 'This report is complete and marked resolved.'
+    };
+    return captions[status] || captions.pending;
+}
+
+// Create horizontal stepper (pending → ongoing → resolved)
+function createStatusProgress(statusRaw) {
+    const order = ['pending', 'ongoing', 'resolved'];
+    const mapped = typeof statusRaw === 'string' ? statusRaw : 'pending';
+    const idx = order.indexOf(mapped);
+    const currentIndex = idx >= 0 ? idx : 0;
+
     const steps = [
-        { id: 'pending', label: 'Pending', icon: 'fa-clock' },
-        { id: 'ongoing', label: 'Ongoing', icon: 'fa-spinner' },
-        { id: 'resolved', label: 'Resolved', icon: 'fa-check-circle' }
+        { id: 'pending', label: 'Pending', hint: 'Submitted', icon: 'fa-clock' },
+        { id: 'ongoing', label: 'Ongoing', hint: 'In progress', icon: 'fa-spinner' },
+        { id: 'resolved', label: 'Resolved', hint: 'Closed', icon: 'fa-circle-check' }
     ];
 
     let html = '';
     steps.forEach((step, index) => {
-        let stepClass = '';
-        if (step.id === status) {
-            stepClass = 'active';
-        } else if (
-            (status === 'ongoing' && step.id === 'pending') ||
-            (status === 'resolved' && (step.id === 'pending' || step.id === 'ongoing'))
-        ) {
-            stepClass = 'completed';
-        }
+        let stepKind = 'upcoming';
+        if (index < currentIndex) stepKind = 'completed';
+        else if (index === currentIndex) stepKind = 'active';
+
+        const currentAttr = stepKind === 'active' ? ' aria-current="step"' : '';
 
         html += `
-            <div class="status-step ${stepClass}">
-                <div class="status-dot">
-                    <i class="fas ${step.icon}"></i>
+            <div class="status-step ${stepKind}" role="listitem" data-phase="${step.id}">
+                <div class="status-dot"${currentAttr}>
+                    <span class="status-dot-inner">
+                        <i class="fas ${step.icon}" aria-hidden="true"></i>
+                    </span>
                 </div>
-                <span class="status-label">${step.label}</span>
+                <div class="status-step-text">
+                    <span class="status-label">${step.label}</span>
+                    <span class="status-step-hint">${step.hint}</span>
+                </div>
             </div>
         `;
     });
@@ -529,6 +547,10 @@ function showIncidentModal(incidentId) {
     const statusProgress = document.getElementById('statusProgress');
     if (statusProgress) {
         statusProgress.innerHTML = createStatusProgress(status);
+    }
+    const statusCaptionEl = document.getElementById('statusProgressCaption');
+    if (statusCaptionEl) {
+        statusCaptionEl.textContent = getStatusProgressCaption(status);
     }
 
     // Update modal header with type icon

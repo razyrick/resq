@@ -322,6 +322,25 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Resolution details (resolved incidents) -->
+                        <div id="agencyResolutionSection" class="hidden bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
+                            <h4 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Resolution details
+                            </h4>
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <p id="agencyResolutionMeta" class="text-xs font-medium text-green-800 mb-2 hidden"></p>
+                                <p id="agencyResolutionNotes" class="text-sm text-green-900 whitespace-pre-wrap hidden"></p>
+                                <p id="agencyResolutionEmptyHint" class="text-sm text-green-700 hidden">No resolution notes or proof photo were recorded.</p>
+                                <div id="agencyResolutionPhotoWrap" class="mt-3 hidden">
+                                    <p class="text-xs font-medium text-green-800 mb-1">Proof photo</p>
+                                    <img id="agencyResolutionProofPhoto" src="" alt="Resolution proof" class="max-h-64 max-w-full rounded-lg border border-green-200 cursor-pointer object-contain" onclick="window.open(this.src, '_blank')" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Right Column - Side Info -->
@@ -402,6 +421,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="../js/upload-image-cloudinary.js"></script>
+    <script src="../js/resolution-detail-helpers.js"></script>
     <script src="js/reports.js"></script>
 </body>
 </html>

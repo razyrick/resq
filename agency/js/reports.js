@@ -391,6 +391,17 @@ function populateIncidentModal(incident) {
         markResolvedBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> Mark as Resolved';
         markResolvedBtn.className = 'flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2';
     }
+
+    if (typeof applyResolutionDetailPanel === 'function') {
+        applyResolutionDetailPanel(incident, {
+            section: document.getElementById('agencyResolutionSection'),
+            meta: document.getElementById('agencyResolutionMeta'),
+            notes: document.getElementById('agencyResolutionNotes'),
+            emptyHint: document.getElementById('agencyResolutionEmptyHint'),
+            photoWrap: document.getElementById('agencyResolutionPhotoWrap'),
+            proofImg: document.getElementById('agencyResolutionProofPhoto')
+        });
+    }
 }
 
 // Close incident modal

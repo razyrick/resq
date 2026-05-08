@@ -344,8 +344,7 @@ function hasValidIncidentCoordinates(incident) {
 function getIncidentPhotoUrl(incident) {
     const candidates = [
         incident.photo_url,
-        incident.photo,
-        incident.resolution_photo
+        incident.photo
     ];
     for (let i = 0; i < candidates.length; i++) {
         const raw = candidates[i];
@@ -355,6 +354,12 @@ function getIncidentPhotoUrl(incident) {
         return s;
     }
     return '';
+}
+
+function hasValidAdminResolutionPhoto(photo) {
+    if (photo === null || photo === undefined) return false;
+    const s = String(photo).trim();
+    return s !== '' && s !== 'null' && s !== 'undefined';
 }
 
 function viewIncidentDetails(index) {
@@ -446,6 +451,82 @@ function showIncidentModal(incident) {
             incidentPhoto.classList.add('hidden');
             incidentPhoto.removeAttribute('src');
             incidentPhotoEmpty.classList.remove('hidden');
+        }
+    }
+
+    const statusKey = String(incident.status || '').trim().toLowerCase();
+    const resolutionSection = document.getElementById('adminResolutionSection');
+    const resolutionMeta = document.getElementById('adminResolutionMeta');
+    const resolutionNotes = document.getElementById('adminResolutionNotes');
+    const resolutionEmptyHint = document.getElementById('adminResolutionEmptyHint');
+    const resolutionPhotoWrap = document.getElementById('adminResolutionPhotoWrap');
+    const resolutionProofPhoto = document.getElementById('adminResolutionProofPhoto');
+
+    if (resolutionSection && resolutionMeta && resolutionNotes && resolutionEmptyHint && resolutionPhotoWrap && resolutionProofPhoto) {
+        if (statusKey === 'resolved') {
+            resolutionSection.classList.remove('hidden');
+
+            const roleRaw = incident.resolved_by_role;
+            const roleLabel = roleRaw === 'agency'
+                ? 'Agency'
+                : (roleRaw === 'barangay' ? 'Barangay' : (roleRaw ? String(roleRaw) : ''));
+            const resolvedAtStr = incident.resolved_at ? formatDate(incident.resolved_at) : '';
+            const metaParts = [];
+            if (roleLabel) {
+                metaParts.push(`Resolved by: ${roleLabel}`);
+            }
+            if (resolvedAtStr && resolvedAtStr !== 'N/A') {
+                metaParts.push(`Completed: ${resolvedAtStr}`);
+            }
+            if (metaParts.length > 0) {
+                resolutionMeta.textContent = metaParts.join(' · ');
+                resolutionMeta.classList.remove('hidden');
+            } else {
+                resolutionMeta.textContent = '';
+                resolutionMeta.classList.add('hidden');
+            }
+
+            const notesTrimmed = incident.resolution_notes && String(incident.resolution_notes).trim()
+                ? String(incident.resolution_notes).trim()
+                : '';
+            if (notesTrimmed) {
+                resolutionNotes.textContent = notesTrimmed;
+                resolutionNotes.classList.remove('hidden');
+            } else {
+                resolutionNotes.textContent = '';
+                resolutionNotes.classList.add('hidden');
+            }
+
+            const proofUrl = hasValidAdminResolutionPhoto(incident.resolution_photo)
+                ? String(incident.resolution_photo).trim()
+                : '';
+            if (proofUrl) {
+                resolutionProofPhoto.src = proofUrl;
+                resolutionPhotoWrap.classList.remove('hidden');
+                resolutionProofPhoto.onerror = function () {
+                    resolutionPhotoWrap.classList.add('hidden');
+                    resolutionProofPhoto.removeAttribute('src');
+                };
+            } else {
+                resolutionPhotoWrap.classList.add('hidden');
+                resolutionProofPhoto.removeAttribute('src');
+            }
+
+            const hasAnyDetail = metaParts.length > 0 || notesTrimmed || proofUrl;
+            if (hasAnyDetail) {
+                resolutionEmptyHint.classList.add('hidden');
+            } else {
+                resolutionEmptyHint.classList.remove('hidden');
+            }
+        } else {
+            resolutionSection.classList.add('hidden');
+            resolutionMeta.classList.add('hidden');
+            resolutionMeta.textContent = '';
+            resolutionNotes.classList.add('hidden');
+            resolutionNotes.textContent = '';
+            resolutionEmptyHint.classList.add('hidden');
+            resolutionPhotoWrap.classList.add('hidden');
+            resolutionProofPhoto.removeAttribute('src');
         }
     }
 

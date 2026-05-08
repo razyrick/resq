@@ -14,6 +14,7 @@ let totalPages = 0;
 let incidentMap = null;
 let incidentMarker = null;
 let currentIncident = null;
+let dispatcherIncidentsListCache = [];
 
 function getStoredUserData() {
     const userDataStr = localStorage.getItem('userData');
@@ -471,12 +472,15 @@ function renderIncidents(incidents, pagination) {
     if (!container) return;
     
     if (incidents.length === 0) {
+        dispatcherIncidentsListCache = [];
         document.getElementById('emptyState').classList.remove('hidden');
         container.innerHTML = '';
         return;
     }
 
     document.getElementById('emptyState').classList.add('hidden');
+
+    dispatcherIncidentsListCache = incidents;
     
     let html = '';
     
@@ -696,6 +700,17 @@ function showIncidentModal(incidentId) {
                 photoSection.classList.add('hidden');
             }
 
+            if (typeof applyResolutionDetailPanel === 'function') {
+                applyResolutionDetailPanel(incident, {
+                    section: document.getElementById('dispatcherIncidentResolutionWrap'),
+                    meta: document.getElementById('dispatcherIncidentResolutionMeta'),
+                    notes: document.getElementById('dispatcherIncidentResolutionNotes'),
+                    emptyHint: document.getElementById('dispatcherIncidentResolutionEmptyHint'),
+                    photoWrap: document.getElementById('dispatcherIncidentResolutionPhotoWrap'),
+                    proofImg: document.getElementById('dispatcherIncidentResolutionProofPhoto')
+                }, { formatResolvedAt: formatDate });
+            }
+
             const lat = parseFloat(incident.latitude);
             const lng = parseFloat(incident.longitude);
             
@@ -743,7 +758,10 @@ async function fetchAgencies() {
 }
 
 async function deployToIncident(incidentId, incidentCode) {
-    currentIncident = { id: incidentId, incident_id: incidentCode };
+    const fromList = dispatcherIncidentsListCache.find((i) => String(i.id) === String(incidentId));
+    currentIncident = fromList
+        ? { ...fromList, id: incidentId, incident_id: incidentCode }
+        : { id: incidentId, incident_id: incidentCode };
     
     const deployModal = document.getElementById('deployModal');
     const deployIncidentId = document.getElementById('deployIncidentId');
@@ -782,6 +800,17 @@ async function deployToIncident(incidentId, incidentCode) {
         option.textContent = 'Error loading agencies';
         option.disabled = true;
         agencySelect.appendChild(option);
+    }
+
+    if (typeof applyResolutionDetailPanel === 'function') {
+        applyResolutionDetailPanel(currentIncident, {
+            section: document.getElementById('deployModalResolutionWrap'),
+            meta: document.getElementById('deployModalResolutionMeta'),
+            notes: document.getElementById('deployModalResolutionNotes'),
+            emptyHint: document.getElementById('deployModalResolutionEmptyHint'),
+            photoWrap: document.getElementById('deployModalResolutionPhotoWrap'),
+            proofImg: document.getElementById('deployModalResolutionProofPhoto')
+        }, { formatResolvedAt: formatDate });
     }
     
     if (deployModal) {

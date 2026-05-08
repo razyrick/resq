@@ -183,6 +183,20 @@
                         </div>
                     </div>
 
+                    <!-- Resolution details (same fields as Admin / barangay when incident is resolved) -->
+                    <div id="assignDispatchResolutionOuter" class="hidden bg-white rounded-xl border border-slate-200 p-6">
+                        <h3 class="text-lg font-semibold text-slate-900 mb-3">Resolution details</h3>
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <p id="assignDispatchResolutionMeta" class="text-xs font-medium text-green-800 mb-2 hidden"></p>
+                            <p id="assignDispatchResolutionNotes" class="text-sm text-green-900 whitespace-pre-wrap hidden"></p>
+                            <p id="assignDispatchResolutionEmptyHint" class="text-sm text-green-700 hidden">No resolution notes or proof photo were recorded.</p>
+                            <div id="assignDispatchResolutionPhotoWrap" class="mt-3 hidden">
+                                <p class="text-xs font-medium text-green-800 mb-1">Proof photo</p>
+                                <img id="assignDispatchResolutionProofPhoto" src="" alt="Resolution proof" class="max-h-64 max-w-full rounded-lg border border-green-200 cursor-pointer object-contain" onclick="window.open(this.src, '_blank')" />
+                            </div>
+                        </div>
+                    </div>
+
                      <!-- Activity Timeline  -->
                     <div class="bg-white rounded-xl border border-slate-200 p-6">
                         <h3 class="text-lg font-semibold text-slate-900 mb-4">Activity Timeline</h3>
@@ -328,6 +342,7 @@
         </div>
     </div>
 
+    <script src="../js/resolution-detail-helpers.js"></script>
     <script>
         // Initialize incident map
         const incidentMap = L.map('incidentMap').setView([14.2691, 121.4113], 15);
@@ -357,6 +372,35 @@
         function toggleNotifications() {
             alert('Notifications panel');
         }
+
+        (function initAssignDispatchResolution() {
+            if (typeof applyResolutionDetailPanel !== 'function') return;
+            var incident = null;
+            try {
+                var raw = sessionStorage.getItem('resq_assign_dispatch_incident');
+                if (raw) {
+                    incident = JSON.parse(raw);
+                    sessionStorage.removeItem('resq_assign_dispatch_incident');
+                }
+            } catch (e) {}
+            if (!incident) {
+                incident = {
+                    status: 'resolved',
+                    resolved_by_role: 'barangay',
+                    resolved_at: new Date().toISOString(),
+                    resolution_notes: 'Layout preview: live data can be supplied via sessionStorage key resq_assign_dispatch_incident (incident JSON) before navigating to this page.',
+                    resolution_photo: ''
+                };
+            }
+            applyResolutionDetailPanel(incident, {
+                section: document.getElementById('assignDispatchResolutionOuter'),
+                meta: document.getElementById('assignDispatchResolutionMeta'),
+                notes: document.getElementById('assignDispatchResolutionNotes'),
+                emptyHint: document.getElementById('assignDispatchResolutionEmptyHint'),
+                photoWrap: document.getElementById('assignDispatchResolutionPhotoWrap'),
+                proofImg: document.getElementById('assignDispatchResolutionProofPhoto')
+            });
+        })();
     </script>
 </body>
 </html>
