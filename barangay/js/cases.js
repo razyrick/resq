@@ -722,12 +722,17 @@ async function confirmAccept() {
 async function resolveCase(caseId) {
     const { isConfirmed, value } = await Swal.fire({
         title: 'Resolve case',
+        customClass: {
+            popup: 'swal-resolve-case'
+        },
         html: `
-            <p class="text-sm text-slate-600 mb-3 text-left">Optional: upload proof photo and add notes for the reporter.</p>
-            <label class="block text-left text-xs font-medium text-slate-600 mb-1">Proof photo</label>
-            <input type="file" id="swal-res-photo" accept="image/*" class="swal2-file mb-3 w-full text-sm" />
-            <label class="block text-left text-xs font-medium text-slate-600 mb-1">Resolution notes</label>
-            <textarea id="swal-res-notes" class="swal2-textarea w-full text-sm" rows="3" placeholder="What was done, units involved, etc."></textarea>
+            <div class="swal-resolve-fields w-full max-w-full box-border overflow-x-hidden text-left">
+                <p class="text-sm text-slate-600 mb-3">Optional: upload proof photo and add notes for the reporter.</p>
+                <label class="block text-xs font-medium text-slate-600 mb-1" for="swal-res-photo">Proof photo</label>
+                <input type="file" id="swal-res-photo" accept="image/*" class="mb-3 rounded border border-slate-200 bg-white px-2 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm" />
+                <label class="block text-xs font-medium text-slate-600 mb-1" for="swal-res-notes">Resolution notes</label>
+                <textarea id="swal-res-notes" class="rounded border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400" rows="3" placeholder="What was done, units involved, etc."></textarea>
+            </div>
         `,
         icon: 'question',
         showCancelButton: true,

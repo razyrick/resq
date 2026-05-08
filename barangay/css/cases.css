@@ -145,3 +145,20 @@
     font-size: 12px;
     font-weight: 500;
 }
+
+/* SweetAlert2 "Resolve case" — equal full-width fields, no horizontal scrollbar */
+.swal2-popup.swal-resolve-case {
+    max-width: min(26rem, calc(100vw - 1.5rem));
+}
+.swal2-popup.swal-resolve-case .swal2-html-container {
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+.swal2-popup.swal-resolve-case .swal-resolve-fields input[type="file"],
+.swal2-popup.swal-resolve-case .swal-resolve-fields textarea {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
