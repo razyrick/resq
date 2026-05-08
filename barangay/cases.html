@@ -409,6 +409,20 @@
                         <img id="detailPhoto" src="" alt="Incident photo" class="max-w-full h-auto rounded-lg max-h-64 object-contain">
                     </div>
                 </div>
+
+                <!-- Resolution (submitted when marking resolved; visible for resolved incidents) -->
+                <div id="resolutionSection" class="hidden">
+                    <h5 class="text-sm font-medium text-slate-700 mb-3">Resolution details</h5>
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <p id="resolutionMeta" class="text-xs font-medium text-green-800 mb-2 hidden"></p>
+                        <p id="resolutionNotes" class="text-sm text-green-900 whitespace-pre-wrap hidden"></p>
+                        <p id="resolutionEmptyHint" class="text-sm text-green-700 hidden">No resolution notes or proof photo were recorded.</p>
+                        <div id="resolutionPhotoWrap" class="mt-3 hidden">
+                            <p class="text-xs font-medium text-green-800 mb-1">Proof photo</p>
+                            <img id="resolutionProofPhoto" src="" alt="Resolution proof" class="max-h-64 max-w-full rounded-lg border border-green-200 cursor-pointer object-contain" onclick="window.open(this.src, '_blank')" />
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="p-6 border-t border-slate-200 flex justify-end gap-3">
                 <button onclick="closeModal('detailsModal')" class="px-6 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">

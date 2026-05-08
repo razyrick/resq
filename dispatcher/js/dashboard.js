@@ -314,7 +314,7 @@ function initDashboardMiniMaps(incidents) {
     });
 }
 
-// Sidebar preview cards (same rows as Active Incidents page for today).
+// Sidebar preview cards for today's incidents.
 function renderPriorityIncidents(incidents) {
     const container = document.getElementById('priorityIncidentsList');
     if (!container) return;
@@ -327,7 +327,7 @@ function renderPriorityIncidents(incidents) {
         container.innerHTML = `
             <div class="text-center py-8 text-slate-500">
                 <i class="fas fa-check-circle text-slate-400 text-3xl mb-2"></i>
-                <p class="mt-2">No incidents for today (same filter as Active Incidents)</p>
+                <p class="mt-2">No incidents for today</p>
             </div>
         `;
         return;

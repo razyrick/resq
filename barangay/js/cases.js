@@ -610,6 +610,12 @@ function initializeMap(latitude, longitude, incidentType) {
     }
 }
 
+function hasValidResolutionPhoto(photo) {
+    if (photo === null || photo === undefined) return false;
+    const s = String(photo).trim();
+    return s !== '' && s !== 'null' && s !== 'undefined';
+}
+
 // Format date and time
 function formatDateTime(dateString) {
     if (!dateString) return 'Unknown';
@@ -952,12 +958,20 @@ function viewDetails(incidentId) {
         const detailPhoto = document.getElementById('detailPhoto');
         const detailAcceptBtn = document.getElementById('detailAcceptBtn');
         const detailResolveBtn = document.getElementById('detailResolveBtn');
+        const resolutionSection = document.getElementById('resolutionSection');
+        const resolutionMeta = document.getElementById('resolutionMeta');
+        const resolutionNotes = document.getElementById('resolutionNotes');
+        const resolutionEmptyHint = document.getElementById('resolutionEmptyHint');
+        const resolutionPhotoWrap = document.getElementById('resolutionPhotoWrap');
+        const resolutionProofPhoto = document.getElementById('resolutionProofPhoto');
 
         // Check if all required elements exist
         if (!detailTitle || !detailId || !detailType || !detailSeverityText || !detailStatusText || 
             !detailCreated || !detailUpdated || !detailUserId || !detailDescription || !detailCoordinates ||
             !detailReporterName || !detailReporterEmail || !detailReporterPhone || !statusProgress ||
-            !severityBadge || !statusBadge || !photoSection || !detailPhoto || !detailAcceptBtn || !detailResolveBtn) {
+            !severityBadge || !statusBadge || !photoSection || !detailPhoto || !detailAcceptBtn || !detailResolveBtn ||
+            !resolutionSection || !resolutionMeta || !resolutionNotes || !resolutionEmptyHint ||
+            !resolutionPhotoWrap || !resolutionProofPhoto) {
             throw new Error('One or more modal elements not found');
         }
 
@@ -1042,6 +1056,73 @@ function viewDetails(incidentId) {
             };
         } else {
             photoSection.classList.add('hidden');
+        }
+
+        if (detailStatusKey === 'resolved') {
+            resolutionSection.classList.remove('hidden');
+
+            const roleRaw = incident.resolved_by_role;
+            const roleLabel = roleRaw === 'agency'
+                ? 'Agency'
+                : (roleRaw === 'barangay' ? 'Barangay' : (roleRaw ? String(roleRaw) : ''));
+            const resolvedAtStr = incident.resolved_at ? formatDateTime(incident.resolved_at) : '';
+
+            const metaParts = [];
+            if (roleLabel) {
+                metaParts.push(`Resolved by: ${roleLabel}`);
+            }
+            if (resolvedAtStr && resolvedAtStr !== 'Unknown') {
+                metaParts.push(`Completed: ${resolvedAtStr}`);
+            }
+            if (metaParts.length > 0) {
+                resolutionMeta.textContent = metaParts.join(' · ');
+                resolutionMeta.classList.remove('hidden');
+            } else {
+                resolutionMeta.textContent = '';
+                resolutionMeta.classList.add('hidden');
+            }
+
+            const notesTrimmed = incident.resolution_notes && String(incident.resolution_notes).trim()
+                ? String(incident.resolution_notes).trim()
+                : '';
+            if (notesTrimmed) {
+                resolutionNotes.textContent = notesTrimmed;
+                resolutionNotes.classList.remove('hidden');
+            } else {
+                resolutionNotes.textContent = '';
+                resolutionNotes.classList.add('hidden');
+            }
+
+            const proofUrl = hasValidResolutionPhoto(incident.resolution_photo)
+                ? String(incident.resolution_photo).trim()
+                : '';
+            if (proofUrl) {
+                resolutionProofPhoto.src = proofUrl;
+                resolutionPhotoWrap.classList.remove('hidden');
+                resolutionProofPhoto.onerror = function () {
+                    resolutionPhotoWrap.classList.add('hidden');
+                    resolutionProofPhoto.removeAttribute('src');
+                };
+            } else {
+                resolutionPhotoWrap.classList.add('hidden');
+                resolutionProofPhoto.removeAttribute('src');
+            }
+
+            const hasAnyDetail = metaParts.length > 0 || notesTrimmed || proofUrl;
+            if (hasAnyDetail) {
+                resolutionEmptyHint.classList.add('hidden');
+            } else {
+                resolutionEmptyHint.classList.remove('hidden');
+            }
+        } else {
+            resolutionSection.classList.add('hidden');
+            resolutionMeta.classList.add('hidden');
+            resolutionMeta.textContent = '';
+            resolutionNotes.classList.add('hidden');
+            resolutionNotes.textContent = '';
+            resolutionEmptyHint.classList.add('hidden');
+            resolutionPhotoWrap.classList.add('hidden');
+            resolutionProofPhoto.removeAttribute('src');
         }
 
         const showAcceptDetail = claimableQueueDetail || (detailStatusKey === 'pending' && !dispatcherNormDetail);
