@@ -219,9 +219,9 @@
         
         <!-- Modal Container -->
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div class="relative flex flex-col bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] min-h-0 overflow-hidden">
                 <!-- Modal Header -->
-                <div class="modal-header bg-white border-b border-gray-200 p-6">
+                <div class="modal-header flex-shrink-0 bg-white border-b border-gray-200 p-6">
                     <div class="flex justify-between items-start">
                         <div class="flex-1 min-w-0">
                             <h3 class="text-xl sm:text-2xl font-bold text-gray-900 truncate" id="modalTitle">
@@ -235,8 +235,8 @@
                     </div>
                 </div>
                 
-                <!-- Modal Body - Scrollable Content -->
-                <div class="modal-body overflow-y-auto p-6 max-h-[calc(90vh-140px)]">
+                <!-- Modal Body - Scrollable Content (flex-1 + min-h-0 keeps footer visible inside max-h) -->
+                <div class="modal-body flex-1 min-h-0 overflow-y-auto p-6">
                     <div class="space-y-4 sm:space-y-6">
                         <!-- Status Progress Bar -->
                         <div class="detail-section">
@@ -377,7 +377,7 @@
                 </div>
                 
                 <!-- Modal Footer -->
-                <div class="modal-footer bg-gray-50 border-t border-gray-200 p-4">
+                <div class="modal-footer flex-shrink-0 bg-gray-50 border-t border-gray-200 p-4">
                     <button type="button" id="modalCloseBtn" class="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm sm:text-base">
                         Close Details
                     </button>
