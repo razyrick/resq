@@ -365,6 +365,12 @@ function viewIncidentDetails(index) {
 
 function showIncidentModal(incident) {
     currentIncident = incident;
+
+    if (incidentMap) {
+        incidentMap.remove();
+        incidentMap = null;
+        incidentMarker = null;
+    }
     
     const statusInfo = getStatusInfo(incident.status);
     const severityInfo = getSeverityInfo(incident.severity_level);
@@ -426,45 +432,58 @@ function showIncidentModal(incident) {
         statusBadge.innerHTML = `<i class="fas ${statusInfo.icon}"></i> ${statusInfo.text}`;
     }
     
-    // Handle incident photo
+    // Handle incident photo (reporter or resolution proof from API)
     const photoSection = document.getElementById('incidentPhotoSection');
     const incidentPhoto = document.getElementById('incidentPhoto');
-    
-    if (photoSection && incidentPhoto) {
-        // Check for photo URL (it might be photo_url or photo in your data)
-        const photoUrl = incident.photo_url || incident.photo;
-        
+    const incidentPhotoEmpty = document.getElementById('incidentPhotoEmpty');
+    const photoUrl = getIncidentPhotoUrl(incident);
+    if (photoSection && incidentPhoto && incidentPhotoEmpty) {
         if (photoUrl) {
-            photoSection.classList.remove('hidden');
-            setImageSource('incidentPhoto', photoUrl, `Incident photo for ${incident.incident_type}`);
+            incidentPhoto.classList.remove('hidden');
+            incidentPhotoEmpty.classList.add('hidden');
+            setImageSource('incidentPhoto', photoUrl, `Incident photo for ${incident.incident_type || 'incident'}`);
         } else {
-            photoSection.classList.add('hidden');
+            incidentPhoto.classList.add('hidden');
+            incidentPhoto.removeAttribute('src');
+            incidentPhotoEmpty.classList.remove('hidden');
         }
     }
-    
-    // Initialize Leaflet Map if coordinates exist
-    if (incident.latitude && incident.longitude) {
-        initializeMap(incident.latitude, incident.longitude, incident.incident_type);
-    } else {
-        // Show message if no coordinates
-        const mapContainer = document.getElementById('incidentMap');
-        if (mapContainer) {
-            mapContainer.innerHTML = `
-                <div class="flex items-center justify-center h-full bg-slate-50 text-slate-500 rounded-lg">
+
+    // Show modal first so the map container has real dimensions for Leaflet
+    const modal = document.getElementById('incidentModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+
+    const mapContainerEl = document.getElementById('incidentMap');
+    if (mapContainerEl) {
+        mapContainerEl.innerHTML = '';
+    }
+
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            const mapEl = document.getElementById('incidentMap');
+            if (!mapEl) return;
+            if (hasValidIncidentCoordinates(incident)) {
+                const lat = parseFloat(incident.latitude);
+                const lng = parseFloat(incident.longitude);
+                initializeMap(lat, lng, incident.incident_type);
+                if (incidentMap) {
+                    incidentMap.invalidateSize();
+                    incidentMap.setView([lat, lng], 16);
+                }
+            } else {
+                mapEl.innerHTML = `
+                <div class="flex items-center justify-center h-full min-h-[280px] bg-slate-50 text-slate-500 rounded-lg">
                     <div class="text-center p-4">
                         <i class="fas fa-map-marker-alt text-2xl mb-2"></i>
                         <p>No coordinates available</p>
                     </div>
                 </div>
             `;
-        }
-    }
-    
-    // Show modal
-    const modal = document.getElementById('incidentModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-    }
+            }
+        }, 50);
+    });
 }
 
 // Leaflet Map initialization function
@@ -491,8 +510,8 @@ function initializeMap(latitude, longitude, title = 'Incident Location') {
             throw new Error('Invalid coordinates');
         }
         
-        // Initialize map
-        incidentMap = L.map('incidentMap').setView([lat, lng], 15);
+        // Initialize map (single default zoom control; do not add a second control)
+        incidentMap = L.map('incidentMap').setView([lat, lng], 16);
         
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -517,17 +536,6 @@ function initializeMap(latitude, longitude, title = 'Incident Location') {
             .addTo(incidentMap)
             .bindPopup(`<b>${title || 'Incident Location'}</b><br>Latitude: ${lat.toFixed(6)}<br>Longitude: ${lng.toFixed(6)}`)
             .openPopup();
-        
-        // Fit bounds to show marker properly
-        incidentMap.fitBounds([
-            [lat - 0.001, lng - 0.001],
-            [lat + 0.001, lng + 0.001]
-        ]);
-        
-        // Add zoom controls
-        L.control.zoom({
-            position: 'topright'
-        }).addTo(incidentMap);
         
     } catch (error) {
         console.error('Map initialization error:', error);
