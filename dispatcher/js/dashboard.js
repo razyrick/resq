@@ -64,6 +64,26 @@ async function fetchDashboardStats() {
     }
 }
 
+/** Same endpoint & query defaults as `dispatcher/js/incidents.js` (today, no extra filters). */
+async function fetchSidebarIncidentsSameAsActiveIncidentsPage() {
+    const params = new URLSearchParams({
+        page: '1',
+        limit: '12',
+        date_scope: 'today'
+    });
+    const response = await fetch(`${API_BASE_URL}/dispatcher/incidents?${params}`, {
+        method: 'GET',
+        headers: getHeaders()
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+}
+
 // Update statistics
 function updateStatistics(stats) {
     const statsContainer = document.getElementById('statsContainer');
@@ -294,7 +314,7 @@ function initDashboardMiniMaps(incidents) {
     });
 }
 
-// Render ongoing incidents for today (from API recent_activity)
+// Sidebar preview cards (same rows as Active Incidents page for today).
 function renderPriorityIncidents(incidents) {
     const container = document.getElementById('priorityIncidentsList');
     if (!container) return;
@@ -307,7 +327,7 @@ function renderPriorityIncidents(incidents) {
         container.innerHTML = `
             <div class="text-center py-8 text-slate-500">
                 <i class="fas fa-check-circle text-slate-400 text-3xl mb-2"></i>
-                <p class="mt-2">No ongoing incidents today</p>
+                <p class="mt-2">No incidents for today (same filter as Active Incidents)</p>
             </div>
         `;
         return;
@@ -771,14 +791,25 @@ function logout() {
 async function loadDashboardData() {
     try {
         const data = await fetchDashboardStats();
-        
-        if (data.success) {
-            updateStatistics(data.data.stats);
-            createMonthlyIncidentsChart(data.data.monthly_incidents);
-            renderPriorityIncidents(data.data.recent_activity);
-            initDashboardMap(data.data.incident_coordinates);
-        } else {
+
+        if (!data.success) {
             throw new Error(data.error || 'Failed to load dashboard data');
+        }
+
+        updateStatistics(data.data.stats);
+        createMonthlyIncidentsChart(data.data.monthly_incidents);
+        initDashboardMap(data.data.incident_coordinates);
+
+        try {
+            const incidentsPayload = await fetchSidebarIncidentsSameAsActiveIncidentsPage();
+            renderPriorityIncidents(
+                incidentsPayload.success && Array.isArray(incidentsPayload.data)
+                    ? incidentsPayload.data
+                    : []
+            );
+        } catch (sidebarErr) {
+            console.error('Error loading sidebar incidents:', sidebarErr);
+            renderPriorityIncidents([]);
         }
     } catch (error) {
         console.error('Error loading dashboard data:', error);
