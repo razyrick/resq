@@ -485,8 +485,16 @@ function formatTimeAgo(dateString) {
     return date.toLocaleDateString();
 }
 
+function normalizeIncidentStatusKey(status) {
+    const s = String(status ?? '').trim().toLowerCase();
+    if (s === 'complete' || s === 'closed') return 'resolved';
+    return s;
+}
+
 // Create status progress bar
 function createStatusProgress(status) {
+    const raw = normalizeIncidentStatusKey(status);
+    const st = raw === 'dispatched' ? 'ongoing' : raw;
     const steps = [
         { id: 'pending', label: 'Pending', icon: 'fa-clock' },
         { id: 'ongoing', label: 'Ongoing', icon: 'fa-spinner' },
@@ -496,18 +504,23 @@ function createStatusProgress(status) {
     let html = '<div class="flex items-center justify-between w-full px-4">';
     
     steps.forEach((step, index) => {
-        const isActive = step.id === status;
+        const isActive = step.id === st;
         const isCompleted = 
-            (status === 'ongoing' && step.id === 'pending') ||
-            (status === 'resolved' && (step.id === 'pending' || step.id === 'ongoing'));
+            (st === 'ongoing' && step.id === 'pending') ||
+            (st === 'resolved' && (step.id === 'pending' || step.id === 'ongoing'));
 
         // Dot colors and styles
         let dotClass = "w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 ";
         let labelClass = "text-xs font-medium mt-1 ";
         
         if (isActive) {
-            dotClass += "bg-blue-600 text-white ring-4 ring-blue-100 scale-110";
-            labelClass += "text-blue-600 font-semibold";
+            if (st === 'resolved' && step.id === 'resolved') {
+                dotClass += "bg-green-600 text-white ring-4 ring-green-100 scale-110";
+                labelClass += "text-green-700 font-semibold";
+            } else {
+                dotClass += "bg-blue-600 text-white ring-4 ring-blue-100 scale-110";
+                labelClass += "text-blue-600 font-semibold";
+            }
         } else if (isCompleted) {
             dotClass += "bg-green-500 text-white";
             labelClass += "text-green-600 font-semibold";
@@ -793,6 +806,7 @@ function createCaseCard(incident) {
     const statusColors = {
         pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
         ongoing: 'bg-blue-100 text-blue-700 border-blue-200',
+        dispatched: 'bg-orange-100 text-orange-700 border-orange-200',
         resolved: 'bg-green-100 text-green-700 border-green-200'
     };
 
@@ -800,7 +814,8 @@ function createCaseCard(incident) {
     const typeConfig = getIncidentTypeConfig(incident.incident_type);
     
     const severityClass = severityColors[incident.severity_level] || severityColors.medium;
-    const statusClass = statusColors[incident.status] || statusColors.pending;
+    const statusKey = normalizeIncidentStatusKey(incident.status);
+    const statusClass = statusColors[statusKey] || statusColors.pending;
 
     // Get reporter information
     const reporterName = getReporterName(incident);
@@ -820,7 +835,7 @@ function createCaseCard(incident) {
                         <div class="flex items-center gap-2 mb-1">
                             <h3 class="text-xl font-bold text-slate-900">${typeConfig.name} Incident</h3>
                             <span class="px-2 py-1 ${severityClass} text-xs font-medium rounded-full capitalize">${incident.severity_level}</span>
-                            <span class="px-2 py-1 ${statusClass} text-xs font-medium rounded-full capitalize">${incident.status}</span>
+                            <span class="px-2 py-1 ${statusClass} text-xs font-medium rounded-full capitalize">${statusKey}</span>
                             ${isEscalated ? `
                                 <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
                                     <i class="fas fa-user-shield mr-1"></i>Escalated to Dispatcher
@@ -958,6 +973,7 @@ function viewDetails(incidentId) {
 
         // Update status progress
         statusProgress.innerHTML = createStatusProgress(incident.status);
+        const detailStatusKey = normalizeIncidentStatusKey(incident.status);
 
         // Update severity and status badges
         const severityColors = {
@@ -969,14 +985,15 @@ function viewDetails(incidentId) {
         const statusColors = {
             pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
             ongoing: 'bg-blue-100 text-blue-700 border-blue-200',
+            dispatched: 'bg-orange-100 text-orange-700 border-orange-200',
             resolved: 'bg-green-100 text-green-700 border-green-200'
         };
 
         severityBadge.className = `px-3 py-1 text-xs font-medium rounded-full ${severityColors[incident.severity_level] || severityColors.medium}`;
-        statusBadge.className = `px-3 py-1 text-xs font-medium rounded-full ${statusColors[incident.status] || statusColors.pending}`;
+        statusBadge.className = `px-3 py-1 text-xs font-medium rounded-full ${statusColors[detailStatusKey] || statusColors.pending}`;
 
         severityBadge.textContent = incident.severity_level || 'Medium';
-        statusBadge.textContent = incident.status || 'Pending';
+        statusBadge.textContent = detailStatusKey;
 
         // Add escalated badge if incident has dispatcher_id
         const isEscalated = incident.dispatcher_id && incident.dispatcher_id !== 'null' && incident.dispatcher_id !== 'undefined' && incident.dispatcher_id !== '';

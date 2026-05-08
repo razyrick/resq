@@ -526,7 +526,14 @@ function getIncidentTypeInfo(type) {
     return types[normalizedType] || types['other'];
 }
 
+function normalizeIncidentStatusKey(status) {
+    const s = String(status ?? '').trim().toLowerCase();
+    if (s === 'complete' || s === 'closed') return 'resolved';
+    return s;
+}
+
 function getStatusInfo(status) {
+    const key = normalizeIncidentStatusKey(status);
     const statuses = {
         'pending': { 
             text: 'Pending', 
@@ -546,7 +553,7 @@ function getStatusInfo(status) {
         },
         'resolved': { 
             text: 'Resolved', 
-            color: 'green', 
+            color: '#16a34a', 
             bgColor: 'bg-green-100',
             textColor: 'text-green-800',
             borderColor: 'border-green-200',
@@ -562,7 +569,7 @@ function getStatusInfo(status) {
         }
     };
     
-    return statuses[status] || statuses['pending'];
+    return statuses[key] || statuses['pending'];
 }
 
 function getSeverityInfo(severity) {
