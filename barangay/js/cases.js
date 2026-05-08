@@ -580,6 +580,12 @@ function initializeMap(latitude, longitude, incidentType) {
         } else {
             console.warn('Invalid coordinates for map:', latitude, longitude);
         }
+
+        setTimeout(() => {
+            if (map) {
+                map.invalidateSize();
+            }
+        }, 250);
     } catch (error) {
         console.error('Error initializing map:', error);
         mapContainer.innerHTML = `
@@ -702,44 +708,75 @@ async function confirmAccept() {
 
 // Active Cases Functions
 async function resolveCase(caseId) {
-    Swal.fire({
-        title: 'Resolve Case?',
-        text: 'Are you sure you want to mark this case as resolved?',
+    const { isConfirmed, value } = await Swal.fire({
+        title: 'Resolve case',
+        html: `
+            <p class="text-sm text-slate-600 mb-3 text-left">Optional: upload proof photo and add notes for the reporter.</p>
+            <label class="block text-left text-xs font-medium text-slate-600 mb-1">Proof photo</label>
+            <input type="file" id="swal-res-photo" accept="image/*" class="swal2-file mb-3 w-full text-sm" />
+            <label class="block text-left text-xs font-medium text-slate-600 mb-1">Resolution notes</label>
+            <textarea id="swal-res-notes" class="swal2-textarea w-full text-sm" rows="3" placeholder="What was done, units involved, etc."></textarea>
+        `,
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#2563eb',
+        confirmButtonColor: '#10b981',
         cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, resolve it',
-        cancelButtonText: 'Cancel'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            try {
-                // Update incident status to resolved
-                const response = await updateIncidentStatus(caseId, {
-                    status: 'resolved'
-                });
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Resolved!',
-                    text: `Case ${caseId} marked as resolved!`,
-                    confirmButtonColor: '#10b981',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-                
-                loadCases(); // Refresh the cases list
-                closeModal('detailsModal');
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Failed to resolve case: ' + error.message,
-                    confirmButtonColor: '#ef4444'
-                });
+        confirmButtonText: 'Submit resolution',
+        cancelButtonText: 'Cancel',
+        preConfirm: async () => {
+            const notesEl = document.getElementById('swal-res-notes');
+            const fileEl = document.getElementById('swal-res-photo');
+            const notes = notesEl ? notesEl.value.trim() : '';
+            let photoUrl = '';
+            if (fileEl && fileEl.files && fileEl.files[0]) {
+                if (typeof uploadResolutionImageToCloudinary !== 'function') {
+                    Swal.showValidationMessage('Upload helper not loaded. Refresh the page.');
+                    return false;
+                }
+                try {
+                    photoUrl = await uploadResolutionImageToCloudinary(fileEl.files[0]);
+                } catch (err) {
+                    Swal.showValidationMessage(err.message || 'Image upload failed');
+                    return false;
+                }
             }
+            return { photoUrl, notes };
         }
     });
+
+    if (!isConfirmed || !value) {
+        return;
+    }
+
+    try {
+        const payload = { status: 'resolved' };
+        if (value.photoUrl) {
+            payload.resolution_photo = value.photoUrl;
+        }
+        if (value.notes) {
+            payload.resolution_notes = value.notes;
+        }
+        await updateIncidentStatus(caseId, payload);
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Resolved!',
+            text: `Case ${caseId} marked as resolved.`,
+            confirmButtonColor: '#10b981',
+            timer: 1500,
+            showConfirmButton: false
+        });
+
+        loadCases();
+        closeModal('detailsModal');
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to resolve case: ' + error.message,
+            confirmButtonColor: '#ef4444'
+        });
+    }
 }
 
 // Create case card HTML with incident type icons - FIXED VERSION

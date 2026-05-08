@@ -284,6 +284,12 @@ function initializeMap(lat, lng, locationName) {
         .addTo(incidentMap)
         .bindPopup(`<b>${locationName || 'Incident Location'}</b><br>Lat: ${lat}<br>Lng: ${lng}`)
         .openPopup();
+
+    setTimeout(() => {
+        if (incidentMap) {
+            incidentMap.invalidateSize();
+        }
+    }, 250);
 }
 
 // Open directions in new tab
@@ -398,56 +404,90 @@ function closeIncidentModal() {
     }
 }
 
-// Mark incident as resolved
+// Mark incident as resolved (optional proof photo + notes for reporter history)
 async function markAsResolved() {
     if (!currentIncident) return;
 
-    const result = await Swal.fire({
-        title: 'Mark as Resolved?',
-        text: 'Are you sure you want to mark this incident as resolved?',
+    const { isConfirmed, value } = await Swal.fire({
+        title: 'Mark as resolved',
+        html: `
+            <p class="text-sm text-slate-600 mb-3 text-left">Optional: upload proof photo and notes for the reporter.</p>
+            <label class="block text-left text-xs font-medium text-slate-600 mb-1">Proof photo</label>
+            <input type="file" id="swal-agency-res-photo" accept="image/*" class="swal2-file mb-3 w-full text-sm" />
+            <label class="block text-left text-xs font-medium text-slate-600 mb-1">Resolution notes</label>
+            <textarea id="swal-agency-res-notes" class="swal2-textarea w-full text-sm" rows="3" placeholder="What was done on scene"></textarea>
+        `,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#10b981',
         cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, mark as resolved',
-        cancelButtonText: 'Cancel'
+        confirmButtonText: 'Submit resolution',
+        cancelButtonText: 'Cancel',
+        preConfirm: async () => {
+            const notesEl = document.getElementById('swal-agency-res-notes');
+            const fileEl = document.getElementById('swal-agency-res-photo');
+            const notes = notesEl ? notesEl.value.trim() : '';
+            let photoUrl = '';
+            if (fileEl && fileEl.files && fileEl.files[0]) {
+                if (typeof uploadResolutionImageToCloudinary !== 'function') {
+                    Swal.showValidationMessage('Upload helper not loaded. Refresh the page.');
+                    return false;
+                }
+                try {
+                    photoUrl = await uploadResolutionImageToCloudinary(fileEl.files[0]);
+                } catch (err) {
+                    Swal.showValidationMessage(err.message || 'Image upload failed');
+                    return false;
+                }
+            }
+            return { photoUrl, notes };
+        }
     });
 
-    if (result.isConfirmed) {
-        try {
-            const response = await apiRequest('/agency/reports', {
-                method: 'PUT',
-                body: JSON.stringify({
-                    incident_id: currentIncident.incident_id,
-                    status: 'resolved'
-                })
-            });
+    if (!isConfirmed || !value) {
+        return;
+    }
 
-            if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Incident Resolved!',
-                    text: 'The incident has been marked as resolved.',
-                    confirmButtonColor: '#10b981',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-
-                // Close modal and reload reports
-                closeIncidentModal();
-                loadReports(currentPage, currentFilters);
-            } else {
-                throw new Error(response.error || 'Failed to mark incident as resolved');
-            }
-        } catch (error) {
-            console.error('Error marking incident as resolved:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to mark incident as resolved: ' + error.message,
-                confirmButtonColor: '#ef4444'
-            });
+    try {
+        const body = {
+            incident_id: currentIncident.incident_id,
+            status: 'resolved'
+        };
+        if (value.photoUrl) {
+            body.resolution_photo = value.photoUrl;
         }
+        if (value.notes) {
+            body.resolution_notes = value.notes;
+        }
+
+        const response = await apiRequest('/agency/reports', {
+            method: 'PUT',
+            body: JSON.stringify(body)
+        });
+
+        if (response.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Incident Resolved!',
+                text: 'The incident has been marked as resolved.',
+                confirmButtonColor: '#10b981',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            closeIncidentModal();
+            loadReports(currentPage, currentFilters);
+        } else {
+            throw new Error(response.error || 'Failed to mark incident as resolved');
+        }
+    } catch (error) {
+        console.error('Error marking incident as resolved:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to mark incident as resolved: ' + error.message,
+            confirmButtonColor: '#ef4444'
+        });
     }
 }
 

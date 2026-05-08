@@ -221,6 +221,14 @@ function getStatusInfo(status) {
             textColor: 'text-green-800',
             borderColor: 'border-green-200',
             icon: 'fa-check-circle'
+        },
+        'dispatched': {
+            text: 'DISPATCHED',
+            color: 'orange',
+            bgColor: 'bg-orange-100',
+            textColor: 'text-orange-800',
+            borderColor: 'border-orange-200',
+            icon: 'fa-paper-plane'
         }
     };
     
@@ -343,6 +351,12 @@ function initIncidentMap(lat, lng) {
             .addTo(incidentMap)
             .bindPopup('Incident Location')
             .openPopup();
+
+        setTimeout(() => {
+            if (incidentMap) {
+                incidentMap.invalidateSize();
+            }
+        }, 250);
     } catch (error) {
         console.error('Error initializing map:', error);
     }
@@ -430,6 +444,15 @@ function renderIncidents(incidents) {
                                             </div>
                                         </div>
                                     </div>
+                                ` : ''}
+                                ${hasValidPhoto(incident.resolution_photo) ? `
+                                    <div class="mb-2 flex items-center gap-2 text-xs text-green-700">
+                                        <i class="fas fa-camera"></i>
+                                        <span>Resolution photo on file</span>
+                                    </div>
+                                ` : ''}
+                                ${incident.resolution_notes && String(incident.resolution_notes).trim() ? `
+                                    <p class="text-xs text-gray-600 mb-2 line-clamp-2"><span class="font-medium text-gray-700">Resolution notes:</span> ${String(incident.resolution_notes).trim()}</p>
                                 ` : ''}
                                 
                                 <div class="flex flex-wrap gap-3 text-xs text-gray-500">
@@ -573,7 +596,47 @@ function showIncidentModal(incidentId) {
             responseInfo.classList.remove('hidden');
             const responseDetails = document.getElementById('modalResponseDetails');
             if (responseDetails) {
-                responseDetails.textContent = 'This incident has been successfully resolved by our emergency response team.';
+                responseDetails.textContent = 'This incident has been marked resolved.';
+            }
+            const metaEl = document.getElementById('modalResolvedMeta');
+            const notesEl = document.getElementById('modalResolutionNotes');
+            const photoWrap = document.getElementById('modalResolutionPhotoWrap');
+            const photoEl = document.getElementById('modalResolutionPhoto');
+
+            const roleLabel = incident.resolved_by_role === 'agency'
+                ? 'Agency'
+                : (incident.resolved_by_role === 'barangay' ? 'Barangay' : 'Responder');
+            const resolvedAt = incident.resolved_at ? formatDate(incident.resolved_at) : '';
+
+            if (metaEl) {
+                const metaParts = [`Resolved by: ${roleLabel}`];
+                if (resolvedAt) {
+                    metaParts.push(`Completed: ${resolvedAt}`);
+                }
+                metaEl.textContent = metaParts.join(' · ');
+                metaEl.classList.remove('hidden');
+            }
+
+            if (notesEl) {
+                const notes = (incident.resolution_notes && String(incident.resolution_notes).trim()) ? String(incident.resolution_notes).trim() : '';
+                if (notes) {
+                    notesEl.textContent = notes;
+                    notesEl.classList.remove('hidden');
+                } else {
+                    notesEl.textContent = '';
+                    notesEl.classList.add('hidden');
+                }
+            }
+
+            if (photoWrap && photoEl) {
+                const proof = incident.resolution_photo && String(incident.resolution_photo).trim() ? String(incident.resolution_photo).trim() : '';
+                if (proof) {
+                    photoEl.src = proof;
+                    photoWrap.classList.remove('hidden');
+                } else {
+                    photoEl.removeAttribute('src');
+                    photoWrap.classList.add('hidden');
+                }
             }
         } else {
             responseInfo.classList.add('hidden');

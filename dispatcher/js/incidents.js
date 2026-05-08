@@ -1,4 +1,5 @@
 const API_BASE_URL = 'https://greenyellow-hawk-206191.hostingersite.com';
+let incidentsDateScope = 'today';
 let userData = null;
 let currentPage = 1;
 let currentLimit = 20;
@@ -58,6 +59,7 @@ async function fetchIncidents(page = 1, limit = 20) {
         if (currentFilters.severity) params.append('severity', currentFilters.severity);
         if (currentFilters.type) params.append('type', currentFilters.type);
         if (currentFilters.search) params.append('search', currentFilters.search);
+        params.append('date_scope', incidentsDateScope);
 
         const response = await fetch(`${API_BASE_URL}/dispatcher/incidents?${params}`, {
             method: 'GET',
@@ -351,6 +353,14 @@ function getStatusInfo(status) {
             textColor: 'text-green-800',
             borderColor: 'border-green-200',
             icon: 'fa-check-circle'
+        },
+        'dispatched': {
+            text: 'Dispatched',
+            color: 'orange',
+            bgColor: 'bg-orange-100',
+            textColor: 'text-orange-800',
+            borderColor: 'border-orange-200',
+            icon: 'fa-paper-plane'
         }
     };
     
@@ -444,7 +454,7 @@ function updateStatistics(incidents) {
                 <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">Total</span>
             </div>
             <h3 class="text-3xl font-bold text-slate-900 mb-1">${totalCount}</h3>
-            <p class="text-sm text-slate-500">Active Incidents</p>
+            <p class="text-sm text-slate-500">${incidentsDateScope === 'today' ? 'Active Incidents Today (this page)' : 'Incidents shown (this page)'}</p>
         </div>
     `;
 }
@@ -604,6 +614,12 @@ function initIncidentMap(lat, lng) {
             .addTo(incidentMap)
             .bindPopup('Incident Location')
             .openPopup();
+
+        setTimeout(() => {
+            if (incidentMap) {
+                incidentMap.invalidateSize();
+            }
+        }, 250);
     } catch (error) {
         console.error('Error initializing map:', error);
     }
@@ -1036,6 +1052,36 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    const scopeTodayBtn = document.getElementById('scopeTodayBtn');
+    const scopeAllBtn = document.getElementById('scopeAllBtn');
+    function refreshScopeButtons() {
+        if (!scopeTodayBtn || !scopeAllBtn) return;
+        if (incidentsDateScope === 'today') {
+            scopeTodayBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white shadow-sm';
+            scopeAllBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200';
+        } else {
+            scopeTodayBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200';
+            scopeAllBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white shadow-sm';
+        }
+    }
+    if (scopeTodayBtn) {
+        scopeTodayBtn.addEventListener('click', () => {
+            incidentsDateScope = 'today';
+            currentPage = 1;
+            refreshScopeButtons();
+            loadIncidents();
+        });
+    }
+    if (scopeAllBtn) {
+        scopeAllBtn.addEventListener('click', () => {
+            incidentsDateScope = 'all';
+            currentPage = 1;
+            refreshScopeButtons();
+            loadIncidents();
+        });
+    }
+    refreshScopeButtons();
 });
 
 document.addEventListener('click', function(e) {

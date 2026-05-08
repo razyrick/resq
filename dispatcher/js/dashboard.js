@@ -44,7 +44,7 @@ function loadUserData() {
 // Fetch dashboard stats
 async function fetchDashboardStats() {
     try {
-        const response = await fetch(`${API_BASE_URL}/dispatcher/dashboard`, {
+        const response = await fetch(`${API_BASE_URL}/dispatcher/dashboard?stats_scope=today`, {
             method: 'GET',
             headers: getHeaders()
         });
@@ -87,7 +87,7 @@ function updateStatistics(stats) {
                 </div>
             </div>
             <h3 class="text-3xl font-bold mb-1">${stats.active_incidents}</h3>
-            <p class="text-red-100">Active Incidents</p>
+            <p class="text-red-100">Active Incidents Today</p>
         </div>
 
         <!-- Available Agencies -->
@@ -102,14 +102,14 @@ function updateStatistics(stats) {
         </div>
 
         <!-- Resolved Cases -->
-        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white">
+        <div class="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl p-6 text-white">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                     <i class="fas fa-check-circle text-white text-xl"></i>
                 </div>
             </div>
             <h3 class="text-3xl font-bold mb-1">${stats.resolved_cases}</h3>
-            <p class="text-purple-100">Resolved Cases</p>
+            <p class="text-emerald-100">Resolved Cases</p>
         </div>
     `;
 }
@@ -216,6 +216,19 @@ function createMonthlyIncidentsChart(monthlyData) {
     });
 }
 
+function formatLocationLine(incident) {
+    const barangayLabel = incident.baranggay
+        ? `Barangay: ${incident.baranggay}`
+        : 'Barangay: unknown';
+    let coordPart = '';
+    const lat = incident.latitude != null ? parseFloat(incident.latitude) : NaN;
+    const lng = incident.longitude != null ? parseFloat(incident.longitude) : NaN;
+    if (!isNaN(lat) && !isNaN(lng)) {
+        coordPart = ` · ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    }
+    return `${barangayLabel}${coordPart}`;
+}
+
 // Render active incidents
 function renderPriorityIncidents(incidents) {
     const container = document.getElementById('priorityIncidentsList');
@@ -261,6 +274,10 @@ function renderPriorityIncidents(incidents) {
                         </div>
                         <p class="text-sm text-slate-600 mb-2 line-clamp-2">${incident.description}</p>
                         <div class="flex flex-wrap gap-4 text-xs text-slate-500">
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-location-dot"></i>
+                                ${formatLocationLine(incident)}
+                            </span>
                             <span class="flex items-center gap-1">
                                 <i class="fas fa-clock"></i>
                                 ${formatDate(incident.created_at)}
@@ -578,6 +595,14 @@ function getSeverityInfo(severity) {
 
 // Initialize dashboard map with incident coordinates
 function initDashboardMap(incidentCoordinates) {
+    const mapEl = document.getElementById('dashboardMap');
+    if (!mapEl) return;
+
+    if (dashboardMap) {
+        dashboardMap.remove();
+        dashboardMap = null;
+    }
+
     dashboardMap = L.map('dashboardMap').setView([14.2691, 121.4113], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
@@ -628,6 +653,12 @@ function initDashboardMap(incidentCoordinates) {
             </div>
         `);
     });
+
+    setTimeout(() => {
+        if (dashboardMap) {
+            dashboardMap.invalidateSize();
+        }
+    }, 250);
 }
 
 // Fullscreen map
@@ -639,7 +670,11 @@ function openFullscreenMap() {
             attribution: '© OpenStreetMap contributors'
         }).addTo(fullscreenMapInstance);
     }
-    setTimeout(() => fullscreenMapInstance.invalidateSize(), 100);
+    setTimeout(() => {
+        if (fullscreenMapInstance) {
+            fullscreenMapInstance.invalidateSize();
+        }
+    }, 250);
 }
 
 function closeFullscreenMap() {
