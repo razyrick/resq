@@ -334,6 +334,29 @@ function updatePagination(pagination) {
     }
 }
 
+function hasValidIncidentCoordinates(incident) {
+    const lat = parseFloat(incident.latitude);
+    const lng = parseFloat(incident.longitude);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return false;
+    return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
+
+function getIncidentPhotoUrl(incident) {
+    const candidates = [
+        incident.photo_url,
+        incident.photo,
+        incident.resolution_photo
+    ];
+    for (let i = 0; i < candidates.length; i++) {
+        const raw = candidates[i];
+        if (raw === null || raw === undefined) continue;
+        const s = String(raw).trim();
+        if (!s || s === 'null' || s === 'undefined') continue;
+        return s;
+    }
+    return '';
+}
+
 function viewIncidentDetails(index) {
     if (allIncidents[index]) {
         showIncidentModal(allIncidents[index]);
@@ -373,8 +396,8 @@ function showIncidentModal(incident) {
     // Location Information
     setTextContent('modalIncidentBarangay', incident.baranggay || 'N/A');
     
-    // Coordinates text display
-    if (incident.latitude && incident.longitude) {
+    // Coordinates text display (optional element in template)
+    if (hasValidIncidentCoordinates(incident)) {
         setTextContent('modalIncidentCoordinatesText', `${incident.latitude}, ${incident.longitude}`);
     } else {
         setTextContent('modalIncidentCoordinatesText', 'Coordinates not available');
