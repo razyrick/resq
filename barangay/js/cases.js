@@ -380,9 +380,9 @@ async function loadCases() {
 // Update statistics
 function updateStats(incidents) {
     const totalCount = currentPagination.total_items || incidents.length;
-    const pendingCount = incidents.filter(i => i.status === 'pending').length;
-    const activeCount = incidents.filter(i => i.status === 'ongoing').length;
-    const resolvedCount = incidents.filter(i => i.status === 'resolved').length;
+    const pendingCount = incidents.filter(i => normalizeIncidentStatusKey(i.status) === 'pending').length;
+    const activeCount = incidents.filter(i => normalizeIncidentStatusKey(i.status) === 'ongoing').length;
+    const resolvedCount = incidents.filter(i => normalizeIncidentStatusKey(i.status) === 'resolved').length;
 
     document.getElementById('totalCount').textContent = totalCount;
     document.getElementById('pendingCount').textContent = pendingCount;
@@ -662,9 +662,8 @@ async function escalateIncident(incidentId) {
     }).then(async (result) => {
         if (result.isConfirmed) {
             try {
-                // Update incident with dispatcher_id set to true (or actual dispatcher ID)
                 const response = await updateIncidentStatus(incidentId, {
-                    dispatcher_id: true // You might want to use actual dispatcher ID here
+                    dispatcher_id: BARANGAY_DISPATCHER_ESCALATION_PLACEHOLDER_ID
                 });
 
                 Swal.fire({
@@ -821,8 +820,23 @@ function createCaseCard(incident) {
     const reporterName = getReporterName(incident);
     const reporterContact = getReporterContact(incident);
 
-    // Check if incident is escalated to dispatcher
-    const isEscalated = incident.dispatcher_id && incident.dispatcher_id !== 'null' && incident.dispatcher_id !== 'undefined' && incident.dispatcher_id !== '';
+    const dispatcherNorm = dispatcherIdNormalizedFromIncident(incident);
+    const claimableQueue = incidentIsClaimableTimedDispatcherEscalation(incident);
+    const lockedByDispatcher = incidentBarangayActionsLockedByDispatcher(incident);
+
+    const showAccept = claimableQueue || (statusKey === 'pending' && !dispatcherNorm);
+    const showEscalate = statusKey === 'pending' && !dispatcherNorm;
+    const showResolve = statusKey === 'ongoing' && !claimableQueue && !lockedByDispatcher;
+
+    const escalationBadgeHtml = claimableQueue ? `
+                                <span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
+                                    <i class="fas fa-clock mr-1"></i>Awaiting dispatcher — you can claim
+                                </span>
+                            ` : (dispatcherNorm !== '' ? `
+                                <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                                    <i class="fas fa-user-shield mr-1"></i>Escalated to Dispatcher
+                                </span>
+                            ` : '');
 
     card.innerHTML = `
         <div class="flex items-start gap-6">
@@ -836,11 +850,7 @@ function createCaseCard(incident) {
                             <h3 class="text-xl font-bold text-slate-900">${typeConfig.name} Incident</h3>
                             <span class="px-2 py-1 ${severityClass} text-xs font-medium rounded-full capitalize">${incident.severity_level}</span>
                             <span class="px-2 py-1 ${statusClass} text-xs font-medium rounded-full capitalize">${statusKey}</span>
-                            ${isEscalated ? `
-                                <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                                    <i class="fas fa-user-shield mr-1"></i>Escalated to Dispatcher
-                                </span>
-                            ` : ''}
+                            ${escalationBadgeHtml ? escalationBadgeHtml : ''}
                         </div>
                         <p class="text-sm text-slate-500">ID: ${incident.incident_id || 'N/A'}</p>
                     </div>
@@ -865,22 +875,21 @@ function createCaseCard(incident) {
                 </div>
 
                 <div class="flex items-center gap-3">
-                    ${!isEscalated ? `
-                        ${incident.status === 'pending' ? `
+                    ${showAccept ? `
                             <button onclick="acceptIncident('${incident.incident_id}')" class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                                Accept & Respond
+                                ${claimableQueue ? 'Claim & Respond' : 'Accept & Respond'}
                             </button>
+                        ` : ''}
+                    ${showEscalate ? `
                             <button onclick="escalateIncident('${incident.incident_id}')" class="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors">
                                 Escalate to Dispatcher
                             </button>
                         ` : ''}
-                        
-                        ${incident.status === 'ongoing' ? `
+                    ${showResolve ? `
                             <button onclick="resolveCase('${incident.incident_id}')" class="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
                                 Mark Resolved
                             </button>
                         ` : ''}
-                    ` : ''}
                     
                     <button onclick="viewDetails('${incident.incident_id}')" class="px-6 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
                         View Details
@@ -974,6 +983,8 @@ function viewDetails(incidentId) {
         // Update status progress
         statusProgress.innerHTML = createStatusProgress(incident.status);
         const detailStatusKey = normalizeIncidentStatusKey(incident.status);
+        const dispatcherNormDetail = dispatcherIdNormalizedFromIncident(incident);
+        const claimableQueueDetail = incidentIsClaimableTimedDispatcherEscalation(incident);
 
         // Update severity and status badges
         const severityColors = {
@@ -995,25 +1006,26 @@ function viewDetails(incidentId) {
         severityBadge.textContent = incident.severity_level || 'Medium';
         statusBadge.textContent = detailStatusKey;
 
-        // Add escalated badge if incident has dispatcher_id
-        const isEscalated = incident.dispatcher_id && incident.dispatcher_id !== 'null' && incident.dispatcher_id !== 'undefined' && incident.dispatcher_id !== '';
-        if (isEscalated) {
-            const headerBadges = document.querySelector('#detailsModal .flex.items-start.justify-between .flex.gap-2');
-            if (headerBadges) {
-                // Remove any existing escalated badges
-                const existingBadges = headerBadges.querySelectorAll('span');
-                existingBadges.forEach((badge, index) => {
-                    if (index >= 2) { // Keep only severity and status badges
-                        badge.remove();
-                    }
-                });
-                
-                // Add escalated badge
-                const escalatedBadge = document.createElement('span');
-                escalatedBadge.className = 'px-3 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full';
-                escalatedBadge.innerHTML = '<i class="fas fa-user-shield mr-1"></i>Escalated to Dispatcher';
-                headerBadges.appendChild(escalatedBadge);
-            }
+        const headerBadgesContainer = document.querySelector('#detailsModal .flex.items-start.justify-between .flex.gap-2');
+        if (headerBadgesContainer) {
+            const existingBadges = headerBadgesContainer.querySelectorAll('span');
+            existingBadges.forEach((badge, index) => {
+                if (index >= 2) {
+                    badge.remove();
+                }
+            });
+        }
+
+        if (claimableQueueDetail && headerBadgesContainer) {
+            const claimBadge = document.createElement('span');
+            claimBadge.className = 'px-3 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full';
+            claimBadge.innerHTML = '<i class="fas fa-clock mr-1"></i>Awaiting dispatcher — you can claim';
+            headerBadgesContainer.appendChild(claimBadge);
+        } else if (dispatcherNormDetail !== '' && headerBadgesContainer) {
+            const escalatedBadge = document.createElement('span');
+            escalatedBadge.className = 'px-3 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full';
+            escalatedBadge.innerHTML = '<i class="fas fa-user-shield mr-1"></i>Escalated to Dispatcher';
+            headerBadgesContainer.appendChild(escalatedBadge);
         }
 
         // Handle photo
@@ -1027,16 +1039,19 @@ function viewDetails(incidentId) {
             photoSection.classList.add('hidden');
         }
 
-        // Show appropriate action buttons - hide all if escalated
+        const showAcceptDetail = claimableQueueDetail || (detailStatusKey === 'pending' && !dispatcherNormDetail);
+        const showResolveDetail = detailStatusKey === 'ongoing'
+            && !claimableQueueDetail
+            && !incidentBarangayActionsLockedByDispatcher(incident);
+
         detailAcceptBtn.classList.add('hidden');
         detailResolveBtn.classList.add('hidden');
 
-        if (!isEscalated) {
-            if (incident.status === 'pending') {
-                detailAcceptBtn.classList.remove('hidden');
-            } else if (incident.status === 'ongoing') {
-                detailResolveBtn.classList.remove('hidden');
-            }
+        if (showAcceptDetail) {
+            detailAcceptBtn.classList.remove('hidden');
+            detailAcceptBtn.textContent = claimableQueueDetail ? 'Claim & Respond' : 'Accept & Respond';
+        } else if (showResolveDetail) {
+            detailResolveBtn.classList.remove('hidden');
         }
 
         // Initialize map
