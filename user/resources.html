@@ -165,6 +165,24 @@
                     </button>
                 </div>
             </div>
+
+            <!-- District tabs: always visible; drives content for both LDRRMO and Barangay panels -->
+            <div id="district-tabs-bar" class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
+                <div class="flex overflow-x-auto">
+                    <button type="button" class="district-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-district="1">
+                        1st District
+                    </button>
+                    <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="2">
+                        2nd District
+                    </button>
+                    <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="3">
+                        3rd District
+                    </button>
+                    <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="4">
+                        4th District
+                    </button>
+                </div>
+            </div>
             
             <!-- LDRRMO Contacts Tab -->
             <div id="ldrrmo-tab" class="tab-content">
@@ -415,24 +433,6 @@
                         </div>
                     </div>
                 </div>
-                <!-- District Tabs -->
-                <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
-                    <div class="flex overflow-x-auto">
-                        <button type="button" class="district-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-district="1">
-                            1st District
-                        </button>
-                        <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="2">
-                            2nd District
-                        </button>
-                        <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="3">
-                            3rd District
-                        </button>
-                        <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="4">
-                            4th District
-                        </button>
-                    </div>
-                </div>
-                
                 <!-- District Contacts -->
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                     <!-- 1st District -->
@@ -1496,6 +1496,14 @@
 <!-- Barangay Contacts Tab -->
 <div id="barangay-tab" class="tab-content hidden">
     <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+
+        <div id="barangayToolbar" class="hidden p-4 border-b border-gray-200">
+            <label for="barangayContactFilter" class="block text-xs font-medium text-gray-500 mb-1">Barangay</label>
+            <select id="barangayContactFilter" class="w-full max-w-xl border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Select a barangay…</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-2">Contacts for the selected barangay (list matches the district tab above when municipality data is available).</p>
+        </div>
 
         <!-- Loading State -->
         <div id="barangayLoading" class="p-8 text-center">
