@@ -733,10 +733,10 @@ async function resolveCase(caseId) {
         },
         html: `
             <div class="swal-resolve-fields w-full max-w-full box-border overflow-x-hidden text-left">
-                <p class="text-sm text-slate-600 mb-3">Optional: upload proof photo and add notes for the reporter.</p>
-                <label class="block text-xs font-medium text-slate-600 mb-1" for="swal-res-photo">Proof photo</label>
+                <p class="text-sm text-slate-600 mb-3">A proof photo is required. Resolution notes are optional.</p>
+                <label class="block text-xs font-medium text-slate-600 mb-1" for="swal-res-photo">Proof photo (required)</label>
                 <input type="file" id="swal-res-photo" accept="image/*" class="mb-3 rounded border border-slate-200 bg-white px-2 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm" />
-                <label class="block text-xs font-medium text-slate-600 mb-1" for="swal-res-notes">Resolution notes</label>
+                <label class="block text-xs font-medium text-slate-600 mb-1" for="swal-res-notes">Resolution notes (optional)</label>
                 <textarea id="swal-res-notes" class="rounded border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400" rows="3" placeholder="What was done, units involved, etc."></textarea>
             </div>
         `,
@@ -751,17 +751,19 @@ async function resolveCase(caseId) {
             const fileEl = document.getElementById('swal-res-photo');
             const notes = notesEl ? notesEl.value.trim() : '';
             let photoUrl = '';
-            if (fileEl && fileEl.files && fileEl.files[0]) {
-                if (typeof uploadResolutionImageToCloudinary !== 'function') {
-                    Swal.showValidationMessage('Upload helper not loaded. Refresh the page.');
-                    return false;
-                }
-                try {
-                    photoUrl = await uploadResolutionImageToCloudinary(fileEl.files[0]);
-                } catch (err) {
-                    Swal.showValidationMessage(err.message || 'Image upload failed');
-                    return false;
-                }
+            if (!fileEl || !fileEl.files || !fileEl.files[0]) {
+                Swal.showValidationMessage('Please upload a proof photo.');
+                return false;
+            }
+            if (typeof uploadResolutionImageToCloudinary !== 'function') {
+                Swal.showValidationMessage('Upload helper not loaded. Refresh the page.');
+                return false;
+            }
+            try {
+                photoUrl = await uploadResolutionImageToCloudinary(fileEl.files[0]);
+            } catch (err) {
+                Swal.showValidationMessage(err.message || 'Image upload failed');
+                return false;
             }
             return { photoUrl, notes };
         }
@@ -772,10 +774,7 @@ async function resolveCase(caseId) {
     }
 
     try {
-        const payload = { status: 'resolved' };
-        if (value.photoUrl) {
-            payload.resolution_photo = value.photoUrl;
-        }
+        const payload = { status: 'resolved', resolution_photo: value.photoUrl };
         if (value.notes) {
             payload.resolution_notes = value.notes;
         }
