@@ -491,6 +491,11 @@ function showBarangayList() {
 
 // Main tab functionality
 function switchTab(tabName) {
+    const districtBar = document.getElementById('district-tabs-bar');
+    if (districtBar) {
+        districtBar.classList.toggle('hidden', tabName === 'barangay');
+    }
+
     // Update active main tab
     mainTabs.forEach(tab => {
         tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
