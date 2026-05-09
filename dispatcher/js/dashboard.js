@@ -43,6 +43,21 @@ function loadUserData() {
     }
 }
 
+/** Parse body once; avoids "Unexpected end of JSON input" on empty/HTML responses. */
+async function parseResponseJson(response) {
+    const text = await response.text();
+    if (text == null || String(text).trim() === '') {
+        throw new Error(`Empty response from server (HTTP ${response.status}). Check API / PHP errors.`);
+    }
+    try {
+        return JSON.parse(text);
+    } catch {
+        throw new Error(
+            `Non-JSON response (HTTP ${response.status}). First bytes: ${String(text).slice(0, 200)}`
+        );
+    }
+}
+
 // Fetch dashboard stats
 async function fetchDashboardStats() {
     try {
@@ -51,12 +66,12 @@ async function fetchDashboardStats() {
             headers: getHeaders()
         });
 
+        const data = await parseResponseJson(response);
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
         return data;
     } catch (error) {
         console.error('Error fetching dashboard stats:', error);
@@ -76,12 +91,11 @@ async function fetchSidebarIncidentsSameAsActiveIncidentsPage() {
         headers: getHeaders()
     });
 
+    const data = await parseResponseJson(response);
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
     }
-
-    return response.json();
+    return data;
 }
 
 // Update statistics
