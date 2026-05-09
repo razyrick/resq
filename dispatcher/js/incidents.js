@@ -739,7 +739,7 @@ function showIncidentModal(incidentId) {
 // Add this function to fetch agencies
 async function fetchAgencies() {
     try {
-        const response = await fetch(`${API_BASE_URL}/dispatcher/agency?status=active&limit=100`, {
+        const response = await fetch(`${API_BASE_URL}/dispatcher/agency?status=active&limit=100&page=1`, {
             method: 'GET',
             headers: getHeaders()
         });
@@ -757,6 +757,137 @@ async function fetchAgencies() {
     }
 }
 
+/**
+ * Fills a select element with active agencies from GET /dispatcher/agency (routing is app-level; patients.agency_id has no DB FK).
+ * @param {HTMLSelectElement|null} selectEl
+ * @param {{ showUnits?: boolean }} opts
+ */
+async function loadDispatcherAgenciesForSelect(selectEl, opts = {}) {
+    const showUnits = Boolean(opts.showUnits);
+    if (!selectEl) return;
+
+    selectEl.disabled = true;
+    selectEl.innerHTML = '';
+    const loadingOpt = document.createElement('option');
+    loadingOpt.value = '';
+    loadingOpt.disabled = true;
+    loadingOpt.textContent = 'Loading agencies...';
+    selectEl.appendChild(loadingOpt);
+
+    const agenciesData = await fetchAgencies();
+
+    selectEl.innerHTML = '<option value="">Select an agency...</option>';
+    selectEl.disabled = false;
+
+    if (agenciesData.success && Array.isArray(agenciesData.data) && agenciesData.data.length > 0) {
+        agenciesData.data.forEach((agency) => {
+            const option = document.createElement('option');
+            option.value = agency.agency_id;
+            option.textContent = showUnits
+                ? `${agency.agency} (${agency.agency_type}) - ${agency.number_of_units} units available`
+                : `${agency.agency} (${agency.agency_type})`;
+            selectEl.appendChild(option);
+        });
+    } else {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No active agencies available';
+        option.disabled = true;
+        selectEl.appendChild(option);
+    }
+}
+
+function closeCreatePatientModal() {
+    const modal = document.getElementById('createPatientModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function openCreatePatientModal() {
+    const modal = document.getElementById('createPatientModal');
+    const agencySelect = document.getElementById('createPatientAgencySelect');
+    if (!modal || !agencySelect) return;
+
+    const fullNameInput = document.getElementById('createPatientFullName');
+    const reasonInput = document.getElementById('createPatientReason');
+    if (fullNameInput) fullNameInput.value = '';
+    if (reasonInput) reasonInput.value = '';
+
+    modal.classList.remove('hidden');
+
+    try {
+        await loadDispatcherAgenciesForSelect(agencySelect, { showUnits: false });
+    } catch (error) {
+        console.error('Error loading agencies for patient modal:', error);
+        agencySelect.innerHTML = '';
+        const errOpt = document.createElement('option');
+        errOpt.value = '';
+        errOpt.textContent = 'Could not load agencies';
+        errOpt.disabled = true;
+        agencySelect.appendChild(errOpt);
+        agencySelect.disabled = true;
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Could not load agencies. Close and try again.',
+            confirmButtonColor: '#ef4444'
+        });
+    }
+}
+
+async function submitCreatePatient() {
+    const fullName = (document.getElementById('createPatientFullName')?.value || '').trim();
+    const reason = (document.getElementById('createPatientReason')?.value || '').trim();
+    const agencySelect = document.getElementById('createPatientAgencySelect');
+    const agencyId = agencySelect ? agencySelect.value : '';
+
+    if (!fullName || !reason || !agencyId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Missing fields',
+            text: 'Please enter name, reason, and select an agency.',
+            confirmButtonColor: '#ca8a04'
+        });
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/dispatcher/patients`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({
+                full_name: fullName,
+                reason: reason,
+                agency_id: agencyId
+            })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Patient created',
+                text: data.message || 'Saved to database.',
+                confirmButtonColor: '#059669'
+            });
+            closeCreatePatientModal();
+        } else {
+            throw new Error(data.error || 'Failed to create patient');
+        }
+    } catch (error) {
+        console.error('createPatient:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Could not save',
+            text: error.message || 'Please try again.',
+            confirmButtonColor: '#ef4444'
+        });
+    }
+}
+
 async function deployToIncident(incidentId, incidentCode) {
     const fromList = dispatcherIncidentsListCache.find((i) => String(i.id) === String(incidentId));
     currentIncident = fromList
@@ -770,36 +901,20 @@ async function deployToIncident(incidentId, incidentCode) {
         deployIncidentId.textContent = `Incident #${incidentCode}`;
     }
     
-    // Clear previous options
     const agencySelect = document.getElementById('deployAgencySelect');
-    agencySelect.innerHTML = '<option value="">Select an agency...</option>';
-    
-    try {
-        // Load agencies
-        const agenciesData = await fetchAgencies();
-        
-        if (agenciesData.success && agenciesData.data.length > 0) {
-            // Populate agency dropdown
-            agenciesData.data.forEach(agency => {
-                const option = document.createElement('option');
-                option.value = agency.agency_id;
-                option.textContent = `${agency.agency} (${agency.agency_type}) - ${agency.number_of_units} units available`;
-                agencySelect.appendChild(option);
-            });
-        } else {
+    if (agencySelect) {
+        try {
+            await loadDispatcherAgenciesForSelect(agencySelect, { showUnits: true });
+        } catch (error) {
+            console.error('Error loading agencies:', error);
+            agencySelect.innerHTML = '';
             const option = document.createElement('option');
             option.value = '';
-            option.textContent = 'No active agencies available';
+            option.textContent = 'Error loading agencies';
             option.disabled = true;
             agencySelect.appendChild(option);
+            agencySelect.disabled = true;
         }
-    } catch (error) {
-        console.error('Error loading agencies:', error);
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = 'Error loading agencies';
-        option.disabled = true;
-        agencySelect.appendChild(option);
     }
 
     if (typeof applyResolutionDetailPanel === 'function') {
@@ -1068,6 +1183,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (submitDeploymentBtn) {
         submitDeploymentBtn.addEventListener('click', submitDeployment);
+    }
+
+    const openCreatePatientBtn = document.getElementById('openCreatePatientBtn');
+    const closeCreatePatientModalBtn = document.getElementById('closeCreatePatientModal');
+    const submitCreatePatientBtn = document.getElementById('submitCreatePatient');
+    const createPatientModal = document.getElementById('createPatientModal');
+    const createPatientModalOverlay = document.getElementById('createPatientModalOverlay');
+
+    if (openCreatePatientBtn) {
+        openCreatePatientBtn.addEventListener('click', openCreatePatientModal);
+    }
+    if (closeCreatePatientModalBtn) {
+        closeCreatePatientModalBtn.addEventListener('click', closeCreatePatientModal);
+    }
+    if (submitCreatePatientBtn) {
+        submitCreatePatientBtn.addEventListener('click', submitCreatePatient);
+    }
+    if (createPatientModal) {
+        createPatientModal.addEventListener('click', (event) => {
+            if (event.target === createPatientModal || event.target === createPatientModalOverlay) {
+                closeCreatePatientModal();
+            }
+        });
     }
 
     const incidentModal = document.getElementById('incidentModal');
