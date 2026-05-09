@@ -1488,6 +1488,15 @@
 <div id="barangay-tab" class="tab-content hidden">
     <div class="bg-white rounded-lg shadow-sm overflow-hidden">
 
+        <!-- Barangay selector: contacts list only after a barangay is chosen -->
+        <div id="barangayToolbar" class="hidden p-4 border-b border-gray-200">
+            <label for="barangayContactFilter" class="block text-xs font-medium text-gray-500 mb-1">Barangay</label>
+            <select id="barangayContactFilter" class="w-full max-w-xl border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Select a barangay…</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-2">Emergency contacts for the selected barangay only.</p>
+        </div>
+
         <!-- Loading State -->
         <div id="barangayLoading" class="p-8 text-center">
             <div class="flex flex-col items-center gap-3">
@@ -1522,7 +1531,7 @@
                 <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                     <i class="fas fa-map-marker-alt text-gray-400 text-xl"></i>
                 </div>
-                <p class="text-gray-600">No barangays found</p>
+                <p id="barangayEmptyMessage" class="text-gray-600">No barangays found</p>
             </div>
         </div>
     </div>

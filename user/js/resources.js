@@ -11,8 +11,8 @@ let mainTabs = [];
 let tabContents = [];
 let districtTabs = [];
 let districtContents = [];
-let barangaySearch, municipalityFilter, barangayLoading, barangayError, barangayErrorMessage;
-let barangayRetryBtn, barangayList, barangayEmpty;
+let barangaySearch, municipalityFilter, barangayContactFilter, barangayToolbar, barangayLoading, barangayError, barangayErrorMessage;
+let barangayRetryBtn, barangayList, barangayEmpty, barangayEmptyMessage;
 
 // Initialize DOM elements
 function initializeElements() {
@@ -24,12 +24,15 @@ function initializeElements() {
     // Barangay Tab Elements
     barangaySearch = document.getElementById('barangaySearch');
     municipalityFilter = document.getElementById('municipalityFilter');
+    barangayContactFilter = document.getElementById('barangayContactFilter');
+    barangayToolbar = document.getElementById('barangayToolbar');
     barangayLoading = document.getElementById('barangayLoading');
     barangayError = document.getElementById('barangayError');
     barangayErrorMessage = document.getElementById('barangayErrorMessage');
     barangayRetryBtn = document.getElementById('barangayRetryBtn');
     barangayList = document.getElementById('barangayList');
     barangayEmpty = document.getElementById('barangayEmpty');
+    barangayEmptyMessage = document.getElementById('barangayEmptyMessage');
 }
 
 // Get stored user data
@@ -80,29 +83,54 @@ function loadUserData() {
     }
 }
 
-// Fetch barangays from API
-async function fetchBarangays() {
-    try {
-        showBarangayLoading();
-        
-        const response = await fetch(`${API_BASE_URL}/user/barangay`, {
-            method: 'GET',
-            headers: getHeaders()
-        });
+// Fetch all barangay pages from API (list is paginated)
+async function fetchBarangaysFromApi() {
+    const collected = [];
+    let page = 1;
+    const limit = 50;
+
+    for (;;) {
+        if (page > 200) {
+            console.warn('fetchBarangaysFromApi: stopped after 200 pages');
+            break;
+        }
+        const response = await fetch(
+            `${API_BASE_URL}/user/barangay?page=${page}&limit=${limit}`,
+            { method: 'GET', headers: getHeaders() }
+        );
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
-        
-        if (data.success) {
-            barangays = data.data;
-            processBarangays();
-            showBarangayList();
-        } else {
+
+        if (!data.success) {
             throw new Error(data.error || 'Failed to load barangays');
         }
+
+        if (Array.isArray(data.data) && data.data.length > 0) {
+            collected.push(...data.data);
+        }
+
+        const hasNext = data.pagination && data.pagination.has_next;
+        if (!hasNext) {
+            break;
+        }
+        page += 1;
+    }
+
+    return collected;
+}
+
+// Fetch barangays from API
+async function fetchBarangays() {
+    try {
+        showBarangayLoading();
+
+        barangays = await fetchBarangaysFromApi();
+        processBarangays();
+        showBarangayList();
     } catch (error) {
         console.error('Error fetching barangays:', error);
         showBarangayError(error.message);
@@ -111,19 +139,15 @@ async function fetchBarangays() {
 
 // Process barangay data
 function processBarangays() {
-    // Extract unique municipalities
     municipalities.clear();
     barangays.forEach(barangay => {
         if (barangay.municipality) {
             municipalities.add(barangay.municipality);
         }
     });
-    
-    // Sort municipalities alphabetically
-    const sortedMunicipalities = Array.from(municipalities).sort();
-    
-    // Populate municipality filter
+
     if (municipalityFilter) {
+        const sortedMunicipalities = Array.from(municipalities).sort();
         municipalityFilter.innerHTML = '<option value="">All Municipalities</option>';
         sortedMunicipalities.forEach(municipality => {
             const option = document.createElement('option');
@@ -132,26 +156,76 @@ function processBarangays() {
             municipalityFilter.appendChild(option);
         });
     }
-    
-    // Initial filtered list
-    filteredBarangays = [...barangays];
+
+    populateBarangayContactFilter();
+    filterBarangays();
+}
+
+function populateBarangayContactFilter() {
+    if (!barangayContactFilter) {
+        filteredBarangays = [];
+        return;
+    }
+
+    const previous = barangayContactFilter.value;
+    barangayContactFilter.innerHTML = '<option value="">Select a barangay…</option>';
+
+    const sorted = [...barangays].sort((a, b) =>
+        String(a.baranggay || '').localeCompare(String(b.baranggay || ''), undefined, { sensitivity: 'base' })
+    );
+
+    sorted.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = String(b.baranggay_id);
+        opt.textContent = b.baranggay || `Barangay ${b.baranggay_id}`;
+        barangayContactFilter.appendChild(opt);
+    });
+
+    const stored = getStoredUserData();
+    const u = stored && stored.user ? stored.user : {};
+    const rawProfileId = u.baranggay_id ?? u.barangay_id;
+    const profileId = rawProfileId != null && rawProfileId !== '' ? String(rawProfileId) : '';
+
+    if (profileId && [...barangayContactFilter.options].some(o => o.value === profileId)) {
+        barangayContactFilter.value = profileId;
+    } else if (previous && [...barangayContactFilter.options].some(o => o.value === previous)) {
+        barangayContactFilter.value = previous;
+    }
 }
 
 // Render barangay list
 function renderBarangayList() {
     if (!barangayList) return;
-    
+
     const container = barangayList.querySelector('.barangay-list');
     if (!container) return;
-    
+
+    const selectedId = barangayContactFilter ? barangayContactFilter.value : '';
+
+    if (!selectedId) {
+        if (barangayEmptyMessage) {
+            barangayEmptyMessage.textContent = 'Select a barangay to view contacts.';
+        }
+        barangayList.classList.add('hidden');
+        if (barangayEmpty) barangayEmpty.classList.remove('hidden');
+        container.innerHTML = '';
+        return;
+    }
+
+    if (barangayEmptyMessage) {
+        barangayEmptyMessage.textContent = 'No barangays found';
+    }
+
     if (filteredBarangays.length === 0) {
         barangayList.classList.add('hidden');
         if (barangayEmpty) barangayEmpty.classList.remove('hidden');
+        container.innerHTML = '';
         return;
     }
-    
+
     if (barangayEmpty) barangayEmpty.classList.add('hidden');
-    
+    if (barangayList) barangayList.classList.remove('hidden');
+
     let html = '';
     
     filteredBarangays.forEach(barangay => {
@@ -242,31 +316,35 @@ function renderBarangayList() {
     });
 }
 
-// Filter barangays based on search and municipality
+// Filter barangays: show only the barangay selected in the dropdown
 function filterBarangays() {
-    const searchTerm = barangaySearch ? barangaySearch.value.toLowerCase() : '';
-    const selectedMunicipality = municipalityFilter ? municipalityFilter.value : '';
-    
-    filteredBarangays = barangays.filter(barangay => {
-        // Filter by municipality
-        if (selectedMunicipality && barangay.municipality !== selectedMunicipality) {
-            return false;
+    const selectedId = barangayContactFilter ? barangayContactFilter.value : '';
+
+    if (!selectedId) {
+        filteredBarangays = [];
+        renderBarangayList();
+        return;
+    }
+
+    filteredBarangays = barangays.filter(b => String(b.baranggay_id) === selectedId);
+
+    const searchTerm = barangaySearch ? barangaySearch.value.toLowerCase().trim() : '';
+    if (searchTerm && filteredBarangays.length > 0) {
+        const b = filteredBarangays[0];
+        const municipalityName = (b.municipality || '').toLowerCase();
+        const haystack = [
+            b.baranggay,
+            b.contact_person,
+            b.contact_number,
+            b.email,
+            municipalityName
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        if (!haystack.includes(searchTerm)) {
+            filteredBarangays = [];
         }
-        
-        // Filter by search term
-        if (searchTerm) {
-            const barangayName = (barangay.baranggay || '').toLowerCase();
-            const municipalityName = (barangay.municipality || '').toLowerCase();
-            const contactPerson = (barangay.contact_person || '').toLowerCase();
-            
-            return barangayName.includes(searchTerm) || 
-                   municipalityName.includes(searchTerm) || 
-                   contactPerson.includes(searchTerm);
-        }
-        
-        return true;
-    });
-    
+    }
+
     renderBarangayList();
 }
 
@@ -283,6 +361,7 @@ function formatDate(dateString) {
 
 // Barangay tab states
 function showBarangayLoading() {
+    if (barangayToolbar) barangayToolbar.classList.add('hidden');
     if (barangayLoading) barangayLoading.classList.remove('hidden');
     if (barangayError) barangayError.classList.add('hidden');
     if (barangayList) barangayList.classList.add('hidden');
@@ -290,6 +369,7 @@ function showBarangayLoading() {
 }
 
 function showBarangayError(message) {
+    if (barangayToolbar) barangayToolbar.classList.add('hidden');
     if (barangayLoading) barangayLoading.classList.add('hidden');
     if (barangayError) barangayError.classList.remove('hidden');
     if (barangayList) barangayList.classList.add('hidden');
@@ -298,6 +378,7 @@ function showBarangayError(message) {
 }
 
 function showBarangayList() {
+    if (barangayToolbar) barangayToolbar.classList.remove('hidden');
     if (barangayLoading) barangayLoading.classList.add('hidden');
     if (barangayError) barangayError.classList.add('hidden');
     if (barangayList) barangayList.classList.remove('hidden');
@@ -422,6 +503,10 @@ function setupBarangayTabListeners() {
 
     if (municipalityFilter) {
         municipalityFilter.addEventListener('change', filterBarangays);
+    }
+
+    if (barangayContactFilter) {
+        barangayContactFilter.addEventListener('change', filterBarangays);
     }
 
     if (barangayRetryBtn) {
