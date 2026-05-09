@@ -417,11 +417,14 @@ function renderIncidents(incidents) {
         
         incidentsByMonth[monthYear].forEach(incident => {
             const typeInfo = getIncidentTypeInfo(incident.incident_type);
-            const status = getIncidentStatus(incident.status);
+            const status = getIncidentStatus(incident);
             const statusInfo = getStatusInfo(incident.status);
             const severityInfo = getSeverityInfo(incident.severity_level);
             const hasPhoto = hasValidPhoto(incident.photo);
             const isRated = incident.user_rated || false;
+            const resolutionProofUrl = hasValidPhoto(incident.resolution_photo)
+                ? String(incident.resolution_photo).trim()
+                : '';
             
             html += `
                 <div class="report-card bg-white rounded-lg shadow-sm overflow-hidden border-l-4 ${statusInfo.borderColor}" data-status="${status}" data-search="${incident.description.toLowerCase()} ${incident.incident_type.toLowerCase()}">
@@ -463,10 +466,14 @@ function renderIncidents(incidents) {
                                         </div>
                                     </div>
                                 ` : ''}
-                                ${hasValidPhoto(incident.resolution_photo) ? `
-                                    <div class="mb-2 flex items-center gap-2 text-xs text-green-700">
-                                        <i class="fas fa-camera"></i>
-                                        <span>Resolution photo on file</span>
+                                ${resolutionProofUrl ? `
+                                    <div class="mb-2">
+                                        <p class="text-xs font-medium text-gray-700 mb-1"><i class="fas fa-check-circle text-green-600 mr-1"></i>Proof of response</p>
+                                        <div class="image-gallery">
+                                            <div class="image-item" onclick='previewImage(${JSON.stringify(resolutionProofUrl)}, ${JSON.stringify([resolutionProofUrl])})'>
+                                                <img src="${resolutionProofUrl}" alt="Resolution proof" class="rounded border border-green-200" onerror="this.style.display='none'">
+                                            </div>
+                                        </div>
                                     </div>
                                 ` : ''}
                                 ${incident.resolution_notes && String(incident.resolution_notes).trim() ? `
@@ -654,9 +661,11 @@ function showIncidentModal(incidentId) {
                 const proof = incident.resolution_photo && String(incident.resolution_photo).trim() ? String(incident.resolution_photo).trim() : '';
                 if (proof) {
                     photoEl.src = proof;
+                    photoEl.onclick = () => previewImage(proof, [proof]);
                     photoWrap.classList.remove('hidden');
                 } else {
                     photoEl.removeAttribute('src');
+                    photoEl.onclick = null;
                     photoWrap.classList.add('hidden');
                 }
             }
