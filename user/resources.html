@@ -39,6 +39,14 @@
             color: white;
         }
         
+        .ldrrmo-subtab {
+            transition: all 0.2s ease;
+        }
+        
+        .ldrrmo-subtab.active {
+            background-color: #eff6ff;
+        }
+        
         /* Custom scrollbar for barangay list */
         .barangay-list {
             max-height: 400px;
@@ -184,9 +192,19 @@
                 </div>
             </div>
             
-            <!-- LDRRMO Contacts Tab -->
+            <!-- LDRRMO Contacts Tab: one view at a time (district officers vs province hotlines) -->
             <div id="ldrrmo-tab" class="tab-content">
-                <!-- Provincial / agency emergency hotlines (public signage reference: Barangay Poblacion II) -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
+                    <div class="flex overflow-x-auto border-b border-gray-200 bg-slate-50">
+                        <button type="button" class="ldrrmo-subtab active px-4 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600" data-ldrrmo-view="district">
+                            District MDRRMO contacts
+                        </button>
+                        <button type="button" class="ldrrmo-subtab px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900" data-ldrrmo-view="hotlines">
+                            Province-wide hotlines
+                        </button>
+                    </div>
+                </div>
+                <div id="ldrrmo-panel-hotlines" class="ldrrmo-output-panel hidden">
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
                     <div class="px-4 py-3 border-b border-gray-200 bg-slate-50">
                         <h3 class="text-sm font-semibold text-gray-900">Emergency hotline numbers</h3>
@@ -433,6 +451,8 @@
                         </div>
                     </div>
                 </div>
+                </div>
+                <div id="ldrrmo-panel-district" class="ldrrmo-output-panel">
                 <!-- District Contacts -->
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                     <!-- 1st District -->
@@ -1488,13 +1508,12 @@
                         </div>
                     </div>
                 </div>
+                </div>
+                </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Barangay Contacts Tab -->
-<div id="barangay-tab" class="tab-content hidden">
+            <!-- Barangay Contacts Tab -->
+            <div id="barangay-tab" class="tab-content hidden">
     <div class="bg-white rounded-lg shadow-sm overflow-hidden">
 
         <div id="barangayToolbar" class="hidden p-4 border-b border-gray-200">

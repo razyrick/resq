@@ -44,6 +44,7 @@ const LAGUNA_MUNICIPALITY_DISTRICT = {
 };
 
 let activeDistrictId = '1';
+let activeLdrrmoView = 'district';
 
 // DOM Elements
 let mainTabs = [];
@@ -127,6 +128,40 @@ function onDistrictChange() {
         populateBarangayContactFilter();
         filterBarangays();
     }
+}
+
+function setLdrrmoView(view) {
+    const v = view === 'hotlines' ? 'hotlines' : 'district';
+    activeLdrrmoView = v;
+
+    const panelDistrict = document.getElementById('ldrrmo-panel-district');
+    const panelHotlines = document.getElementById('ldrrmo-panel-hotlines');
+    if (panelDistrict) {
+        panelDistrict.classList.toggle('hidden', v !== 'district');
+    }
+    if (panelHotlines) {
+        panelHotlines.classList.toggle('hidden', v !== 'hotlines');
+    }
+
+    document.querySelectorAll('.ldrrmo-subtab').forEach(btn => {
+        const isMatch = btn.getAttribute('data-ldrrmo-view') === v;
+        btn.classList.toggle('active', isMatch);
+        btn.classList.toggle('border-b-2', isMatch);
+        btn.classList.toggle('border-blue-600', isMatch);
+        btn.classList.toggle('text-blue-600', isMatch);
+        btn.classList.toggle('text-gray-600', !isMatch);
+    });
+}
+
+function setupLdrrmoSubtabs() {
+    document.querySelectorAll('.ldrrmo-subtab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const viewClicked = btn.getAttribute('data-ldrrmo-view');
+            if (viewClicked) {
+                setLdrrmoView(viewClicked);
+            }
+        });
+    });
 }
 
 // Load user data to sidebar
@@ -477,7 +512,11 @@ function switchTab(tabName) {
     if (activeContent) {
         activeContent.classList.remove('hidden');
     }
-    
+
+    if (tabName === 'ldrrmo') {
+        setLdrrmoView(activeLdrrmoView);
+    }
+
     // If switching to barangay tab and data hasn't been loaded, fetch it
     if (tabName === 'barangay' && barangays.length === 0) {
         fetchBarangays();
@@ -630,6 +669,7 @@ function initialize() {
     loadUserData();
     setupSidebar();
     setupDistrictTabs();
+    setupLdrrmoSubtabs();
     setupCallButtons();
     setupBarangayTabListeners();
     setupMainTabListeners();
