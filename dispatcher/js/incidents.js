@@ -690,6 +690,7 @@ function showIncidentModal(incidentId) {
                 statusBadge.className = `status-badge ${statusInfo.bgColor} ${statusInfo.textColor} ${statusInfo.borderColor} border`;
                 statusBadge.innerHTML = `<i class="fas ${statusInfo.icon}"></i> ${statusInfo.text}`;
             }
+            renderIncidentPatientSummary(incident);
             updateIncidentModalFooter(incident);
 
             const photoSection = document.getElementById('modalPhotoSection');
@@ -852,6 +853,7 @@ function updateIncidentModalFooter(incident) {
     const deployBtn = document.getElementById('modalDeployMoreBtn');
     const addPatientBtn = document.getElementById('modalAddPatientBtn');
     const canDeploy = incident.status === 'pending' || incident.status === 'ongoing';
+    const hasPatient = Boolean(incident.patient_id || incident.linked_patient_id);
 
     if (deployBtn) {
         deployBtn.disabled = !canDeploy;
@@ -864,8 +866,58 @@ function updateIncidentModalFooter(incident) {
     }
 
     if (addPatientBtn) {
-        addPatientBtn.disabled = false;
+        addPatientBtn.disabled = hasPatient;
+        addPatientBtn.className = hasPatient
+            ? 'px-4 py-3 bg-slate-200 text-slate-500 text-sm font-medium rounded-lg cursor-not-allowed flex items-center justify-center gap-2'
+            : 'px-4 py-3 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2';
+        addPatientBtn.innerHTML = hasPatient
+            ? '<i class="fas fa-check"></i> Patient Added'
+            : '<i class="fas fa-user-injured"></i> Add Patient';
     }
+}
+
+function renderIncidentPatientSummary(incident) {
+    const wrap = document.getElementById('modalPatientSummary');
+    if (!wrap) return;
+
+    const patientId = incident.patient_id || incident.linked_patient_id || '';
+    if (!patientId) {
+        wrap.classList.add('hidden');
+        return;
+    }
+
+    wrap.classList.remove('hidden');
+    document.getElementById('modalPatientName').textContent =
+        incident.linked_patient_name || incident.patient_full_name || 'Patient added';
+    document.getElementById('modalPatientReason').textContent =
+        incident.linked_patient_reason || incident.patient_reason || 'No reason provided';
+    document.getElementById('modalPatientId').textContent = patientId;
+}
+
+function applyCreatedPatientToIncident(patient) {
+    if (!currentIncident || !patient || !patient.patient_id) {
+        return;
+    }
+
+    const nextIncident = {
+        ...currentIncident,
+        patient_id: patient.patient_id,
+        linked_patient_id: patient.patient_id,
+        linked_patient_name: patient.full_name || '',
+        linked_patient_reason: patient.reason || '',
+        linked_patient_status: patient.status || 'ongoing'
+    };
+    currentIncident = nextIncident;
+
+    dispatcherIncidentsListCache = dispatcherIncidentsListCache.map((incident) => {
+        if (incident.incident_id !== nextIncident.incident_id) {
+            return incident;
+        }
+        return { ...incident, ...nextIncident };
+    });
+
+    renderIncidentPatientSummary(currentIncident);
+    updateIncidentModalFooter(currentIncident);
 }
 
 function openCreatePatientFromIncident() {
@@ -932,6 +984,12 @@ async function submitCreatePatient() {
         }
 
         if (data.success) {
+            applyCreatedPatientToIncident(data.data || {
+                patient_id: '',
+                full_name: fullName,
+                reason: reason,
+                status: 'ongoing'
+            });
             Swal.fire({
                 icon: 'success',
                 title: 'Patient created',
