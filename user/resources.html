@@ -30,6 +30,15 @@
             color: white;
         }
         
+        .main-tab {
+            transition: all 0.3s ease;
+        }
+        
+        .main-tab.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
         /* Custom scrollbar for barangay list */
         .barangay-list {
             max-height: 400px;
@@ -148,10 +157,10 @@
             <!-- Tabs -->
             <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
                 <div class="flex overflow-x-auto">
-                    <button class="district-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-tab="ldrrmo">
+                    <button type="button" class="main-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-tab="ldrrmo">
                         LDRRMO Contacts
                     </button>
-                    <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-tab="barangay">
+                    <button type="button" class="main-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-tab="barangay">
                         Barangay Contacts
                     </button>
                 </div>
@@ -409,16 +418,16 @@
                 <!-- District Tabs -->
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
                     <div class="flex overflow-x-auto">
-                        <button class="district-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-district="1">
+                        <button type="button" class="district-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-district="1">
                             1st District
                         </button>
-                        <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="2">
+                        <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="2">
                             2nd District
                         </button>
-                        <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="3">
+                        <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="3">
                             3rd District
                         </button>
-                        <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="4">
+                        <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="4">
                             4th District
                         </button>
                     </div>
@@ -1487,15 +1496,6 @@
 <!-- Barangay Contacts Tab -->
 <div id="barangay-tab" class="tab-content hidden">
     <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-
-        <!-- Barangay selector: contacts list only after a barangay is chosen -->
-        <div id="barangayToolbar" class="hidden p-4 border-b border-gray-200">
-            <label for="barangayContactFilter" class="block text-xs font-medium text-gray-500 mb-1">Barangay</label>
-            <select id="barangayContactFilter" class="w-full max-w-xl border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="">Select a barangay…</option>
-            </select>
-            <p class="text-xs text-gray-500 mt-2">Emergency contacts for the selected barangay only.</p>
-        </div>
 
         <!-- Loading State -->
         <div id="barangayLoading" class="p-8 text-center">

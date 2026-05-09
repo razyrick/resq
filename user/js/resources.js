@@ -11,21 +11,20 @@ let mainTabs = [];
 let tabContents = [];
 let districtTabs = [];
 let districtContents = [];
-let barangaySearch, municipalityFilter, barangayContactFilter, barangayToolbar, barangayLoading, barangayError, barangayErrorMessage;
+let barangaySearch, municipalityFilter, barangayLoading, barangayError, barangayErrorMessage;
 let barangayRetryBtn, barangayList, barangayEmpty, barangayEmptyMessage;
 
 // Initialize DOM elements
 function initializeElements() {
     mainTabs = document.querySelectorAll('[data-tab]');
     tabContents = document.querySelectorAll('.tab-content');
-    districtTabs = document.querySelectorAll('.district-tab');
-    districtContents = document.querySelectorAll('.district-content');
+    // Only district buttons inside LDRRMO panel — not the main LDRRMO/Barangay tabs
+    districtTabs = document.querySelectorAll('#ldrrmo-tab [data-district]');
+    districtContents = document.querySelectorAll('#ldrrmo-tab .district-content');
     
     // Barangay Tab Elements
     barangaySearch = document.getElementById('barangaySearch');
     municipalityFilter = document.getElementById('municipalityFilter');
-    barangayContactFilter = document.getElementById('barangayContactFilter');
-    barangayToolbar = document.getElementById('barangayToolbar');
     barangayLoading = document.getElementById('barangayLoading');
     barangayError = document.getElementById('barangayError');
     barangayErrorMessage = document.getElementById('barangayErrorMessage');
@@ -157,40 +156,8 @@ function processBarangays() {
         });
     }
 
-    populateBarangayContactFilter();
+    filteredBarangays = [...barangays];
     filterBarangays();
-}
-
-function populateBarangayContactFilter() {
-    if (!barangayContactFilter) {
-        filteredBarangays = [];
-        return;
-    }
-
-    const previous = barangayContactFilter.value;
-    barangayContactFilter.innerHTML = '<option value="">Select a barangay…</option>';
-
-    const sorted = [...barangays].sort((a, b) =>
-        String(a.baranggay || '').localeCompare(String(b.baranggay || ''), undefined, { sensitivity: 'base' })
-    );
-
-    sorted.forEach(b => {
-        const opt = document.createElement('option');
-        opt.value = String(b.baranggay_id);
-        opt.textContent = b.baranggay || `Barangay ${b.baranggay_id}`;
-        barangayContactFilter.appendChild(opt);
-    });
-
-    const stored = getStoredUserData();
-    const u = stored && stored.user ? stored.user : {};
-    const rawProfileId = u.baranggay_id ?? u.barangay_id;
-    const profileId = rawProfileId != null && rawProfileId !== '' ? String(rawProfileId) : '';
-
-    if (profileId && [...barangayContactFilter.options].some(o => o.value === profileId)) {
-        barangayContactFilter.value = profileId;
-    } else if (previous && [...barangayContactFilter.options].some(o => o.value === previous)) {
-        barangayContactFilter.value = previous;
-    }
 }
 
 // Render barangay list
@@ -199,18 +166,6 @@ function renderBarangayList() {
 
     const container = barangayList.querySelector('.barangay-list');
     if (!container) return;
-
-    const selectedId = barangayContactFilter ? barangayContactFilter.value : '';
-
-    if (!selectedId) {
-        if (barangayEmptyMessage) {
-            barangayEmptyMessage.textContent = 'Select a barangay to view contacts.';
-        }
-        barangayList.classList.add('hidden');
-        if (barangayEmpty) barangayEmpty.classList.remove('hidden');
-        container.innerHTML = '';
-        return;
-    }
 
     if (barangayEmptyMessage) {
         barangayEmptyMessage.textContent = 'No barangays found';
@@ -316,34 +271,28 @@ function renderBarangayList() {
     });
 }
 
-// Filter barangays: show only the barangay selected in the dropdown
+// Filter barangays (optional search + municipality dropdown, when present)
 function filterBarangays() {
-    const selectedId = barangayContactFilter ? barangayContactFilter.value : '';
-
-    if (!selectedId) {
-        filteredBarangays = [];
-        renderBarangayList();
-        return;
-    }
-
-    filteredBarangays = barangays.filter(b => String(b.baranggay_id) === selectedId);
-
     const searchTerm = barangaySearch ? barangaySearch.value.toLowerCase().trim() : '';
-    if (searchTerm && filteredBarangays.length > 0) {
-        const b = filteredBarangays[0];
-        const municipalityName = (b.municipality || '').toLowerCase();
-        const haystack = [
-            b.baranggay,
-            b.contact_person,
-            b.contact_number,
-            b.email,
-            municipalityName
-        ].filter(Boolean).join(' ').toLowerCase();
+    const selectedMunicipality = municipalityFilter ? municipalityFilter.value : '';
 
-        if (!haystack.includes(searchTerm)) {
-            filteredBarangays = [];
+    filteredBarangays = barangays.filter(barangay => {
+        if (selectedMunicipality && barangay.municipality !== selectedMunicipality) {
+            return false;
         }
-    }
+
+        if (searchTerm) {
+            const barangayName = (barangay.baranggay || '').toLowerCase();
+            const municipalityName = (barangay.municipality || '').toLowerCase();
+            const contactPerson = (barangay.contact_person || '').toLowerCase();
+
+            return barangayName.includes(searchTerm) ||
+                   municipalityName.includes(searchTerm) ||
+                   contactPerson.includes(searchTerm);
+        }
+
+        return true;
+    });
 
     renderBarangayList();
 }
@@ -361,7 +310,6 @@ function formatDate(dateString) {
 
 // Barangay tab states
 function showBarangayLoading() {
-    if (barangayToolbar) barangayToolbar.classList.add('hidden');
     if (barangayLoading) barangayLoading.classList.remove('hidden');
     if (barangayError) barangayError.classList.add('hidden');
     if (barangayList) barangayList.classList.add('hidden');
@@ -369,7 +317,6 @@ function showBarangayLoading() {
 }
 
 function showBarangayError(message) {
-    if (barangayToolbar) barangayToolbar.classList.add('hidden');
     if (barangayLoading) barangayLoading.classList.add('hidden');
     if (barangayError) barangayError.classList.remove('hidden');
     if (barangayList) barangayList.classList.add('hidden');
@@ -378,7 +325,6 @@ function showBarangayError(message) {
 }
 
 function showBarangayList() {
-    if (barangayToolbar) barangayToolbar.classList.remove('hidden');
     if (barangayLoading) barangayLoading.classList.add('hidden');
     if (barangayError) barangayError.classList.add('hidden');
     if (barangayList) barangayList.classList.remove('hidden');
@@ -416,21 +362,22 @@ function switchTab(tabName) {
     }
 }
 
-// District tab functionality
+// District tab functionality (only buttons with data-district, inside #ldrrmo-tab)
 function setupDistrictTabs() {
     districtTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const districtId = tab.getAttribute('data-district');
-            
-            // Update active district tab
+            if (!districtId) {
+                return;
+            }
+
             districtTabs.forEach(t => {
                 t.classList.remove('active', 'border-blue-600', 'text-blue-600');
                 t.classList.add('text-gray-600');
             });
             tab.classList.add('active', 'border-blue-600', 'text-blue-600');
             tab.classList.remove('text-gray-600');
-            
-            // Show corresponding content
+
             districtContents.forEach(content => {
                 content.classList.add('hidden');
             });
@@ -503,10 +450,6 @@ function setupBarangayTabListeners() {
 
     if (municipalityFilter) {
         municipalityFilter.addEventListener('change', filterBarangays);
-    }
-
-    if (barangayContactFilter) {
-        barangayContactFilter.addEventListener('change', filterBarangays);
     }
 
     if (barangayRetryBtn) {
