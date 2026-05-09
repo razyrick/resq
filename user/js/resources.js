@@ -361,7 +361,7 @@ function setupDistrictTabs() {
     });
 }
 
-// Call functionality for LADRRMO contacts
+// Call functionality for LDRRMO contacts
 function setupCallButtons() {
     document.addEventListener('click', function(event) {
         if (event.target.closest('.call-btn')) {
@@ -474,8 +474,8 @@ function initialize() {
     setupMainTabListeners();
     setupLogoutListener();
     
-    // Default to LADRRMO tab
-    switchTab('ladrrmo');
+    // Default to LDRRMO tab
+    switchTab('ldrrmo');
 }
 
 // Initialize when DOM is loaded
