@@ -984,11 +984,11 @@ async function submitCreatePatient() {
         }
 
         if (data.success) {
-            applyCreatedPatientToIncident(data.data || {
-                patient_id: '',
+            applyCreatedPatientToIncident({
                 full_name: fullName,
                 reason: reason,
-                status: 'ongoing'
+                status: 'ongoing',
+                ...(data.data || {})
             });
             Swal.fire({
                 icon: 'success',
