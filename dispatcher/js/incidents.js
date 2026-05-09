@@ -14,6 +14,7 @@ let totalPages = 0;
 let incidentMap = null;
 let incidentMarker = null;
 let currentIncident = null;
+let createPatientIncidentId = null;
 let dispatcherIncidentsListCache = [];
 
 function getStoredUserData() {
@@ -689,6 +690,7 @@ function showIncidentModal(incidentId) {
                 statusBadge.className = `status-badge ${statusInfo.bgColor} ${statusInfo.textColor} ${statusInfo.borderColor} border`;
                 statusBadge.innerHTML = `<i class="fas ${statusInfo.icon}"></i> ${statusInfo.text}`;
             }
+            updateIncidentModalFooter(incident);
 
             const photoSection = document.getElementById('modalPhotoSection');
             const photoElement = document.getElementById('modalPhoto');
@@ -800,13 +802,22 @@ async function loadDispatcherAgenciesForSelect(selectEl, opts = {}) {
 function closeCreatePatientModal() {
     const modal = document.getElementById('createPatientModal');
     if (modal) modal.classList.add('hidden');
+    createPatientIncidentId = null;
 }
 
-async function openCreatePatientModal() {
+async function openCreatePatientModal(options = {}) {
     const modal = document.getElementById('createPatientModal');
     const agencySelect = document.getElementById('createPatientAgencySelect');
     if (!modal || !agencySelect) return;
 
+    const preselectedAgencyId =
+        options && typeof options === 'object' && 'preselectedAgencyId' in options
+            ? String(options.preselectedAgencyId || '')
+            : '';
+    createPatientIncidentId =
+        options && typeof options === 'object' && 'incidentId' in options
+            ? String(options.incidentId || '')
+            : '';
     const fullNameInput = document.getElementById('createPatientFullName');
     const reasonInput = document.getElementById('createPatientReason');
     if (fullNameInput) fullNameInput.value = '';
@@ -816,6 +827,9 @@ async function openCreatePatientModal() {
 
     try {
         await loadDispatcherAgenciesForSelect(agencySelect, { showUnits: false });
+        if (preselectedAgencyId) {
+            agencySelect.value = preselectedAgencyId;
+        }
     } catch (error) {
         console.error('Error loading agencies for patient modal:', error);
         agencySelect.innerHTML = '';
@@ -832,6 +846,51 @@ async function openCreatePatientModal() {
             confirmButtonColor: '#ef4444'
         });
     }
+}
+
+function updateIncidentModalFooter(incident) {
+    const deployBtn = document.getElementById('modalDeployMoreBtn');
+    const addPatientBtn = document.getElementById('modalAddPatientBtn');
+    const canDeploy = incident.status === 'pending' || incident.status === 'ongoing';
+
+    if (deployBtn) {
+        deployBtn.disabled = !canDeploy;
+        deployBtn.className = canDeploy
+            ? 'px-4 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2'
+            : 'px-4 py-3 bg-slate-200 text-slate-500 text-sm font-medium rounded-lg cursor-not-allowed flex items-center justify-center gap-2';
+        deployBtn.innerHTML = `<i class="fas ${canDeploy ? 'fa-paper-plane' : 'fa-check'}"></i> ${
+            canDeploy && incident.status === 'ongoing' ? 'Deploy More' : canDeploy ? 'Deploy Now' : 'Resolved'
+        }`;
+    }
+
+    if (addPatientBtn) {
+        addPatientBtn.disabled = false;
+    }
+}
+
+function openCreatePatientFromIncident() {
+    openCreatePatientModal({
+        preselectedAgencyId: currentIncident ? currentIncident.agency_id : '',
+        incidentId: currentIncident ? currentIncident.incident_id : ''
+    });
+}
+
+function deployCurrentIncidentFromModal() {
+    if (!currentIncident || !currentIncident.id || !currentIncident.incident_id) {
+        Swal.fire({
+            icon: 'error',
+            title: 'No incident selected',
+            text: 'Please reopen the incident details and try again.',
+            confirmButtonColor: '#ef4444'
+        });
+        return;
+    }
+
+    if (!(currentIncident.status === 'pending' || currentIncident.status === 'ongoing')) {
+        return;
+    }
+
+    deployToIncident(currentIncident.id, currentIncident.incident_id);
 }
 
 async function submitCreatePatient() {
@@ -851,14 +910,20 @@ async function submitCreatePatient() {
     }
 
     try {
+        const payload = {
+            full_name: fullName,
+            reason: reason,
+            agency_id: agencyId
+        };
+
+        if (createPatientIncidentId) {
+            payload.incident_id = createPatientIncidentId;
+        }
+
         const response = await fetch(`${API_BASE_URL}/dispatcher/patients`, {
             method: 'POST',
             headers: getHeaders(),
-            body: JSON.stringify({
-                full_name: fullName,
-                reason: reason,
-                agency_id: agencyId
-            })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json().catch(() => ({}));
@@ -874,6 +939,7 @@ async function submitCreatePatient() {
                 confirmButtonColor: '#059669'
             });
             closeCreatePatientModal();
+            createPatientIncidentId = null;
         } else {
             throw new Error(data.error || 'Failed to create patient');
         }
@@ -1144,8 +1210,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeModal = document.getElementById('closeModal');
     const closeDeployModalBtn = document.getElementById('closeDeployModal');
     const openInMaps = document.getElementById('openInMaps');
-    const deployNowBtn = document.getElementById('deployNowBtn');
     const submitDeploymentBtn = document.getElementById('submitDeployment');
+    const modalAddPatientBtn = document.getElementById('modalAddPatientBtn');
+    const modalDeployMoreBtn = document.getElementById('modalDeployMoreBtn');
 
     [searchInput, severityFilter, typeFilter, statusFilter].forEach(element => {
         element.addEventListener('change', filterIncidents);
@@ -1183,6 +1250,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (submitDeploymentBtn) {
         submitDeploymentBtn.addEventListener('click', submitDeployment);
+    }
+
+    if (modalAddPatientBtn) {
+        modalAddPatientBtn.addEventListener('click', openCreatePatientFromIncident);
+    }
+
+    if (modalDeployMoreBtn) {
+        modalDeployMoreBtn.addEventListener('click', deployCurrentIncidentFromModal);
     }
 
     const openCreatePatientBtn = document.getElementById('openCreatePatientBtn');

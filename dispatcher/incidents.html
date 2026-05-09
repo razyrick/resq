@@ -266,7 +266,7 @@
             
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
             
-            <div class="inline-block w-full max-w-4xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
+            <div class="inline-block w-full max-w-6xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
                 <!-- Modal Header -->
                 <div class="flex items-center justify-between p-6 border-b border-slate-200">
                     <div class="flex items-center gap-4">
@@ -286,7 +286,7 @@
                 </div>
                 
                 <!-- Modal Body -->
-                <div class="p-6 max-h-96 overflow-y-auto">
+                <div class="p-6 max-h-[70vh] overflow-y-auto">
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Left Column - Incident Details -->
                         <div class="space-y-6">
@@ -381,16 +381,27 @@
                                 </div>
                             </div>
                             
-                            <!-- Action Buttons -->
-                            <div class="flex flex-col gap-3">
-                                <button id="openInMaps" class="w-full px-4 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                                    </svg>
-                                    Open in Maps
-                                </button>
-                            </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-6 border-t border-slate-200 bg-slate-50">
+                    <button id="openInMaps" class="px-4 py-3 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-100 transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                        Open in Maps
+                    </button>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button type="button" id="modalAddPatientBtn" class="px-4 py-3 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
+                            <i class="fas fa-user-injured"></i>
+                            Add Patient
+                        </button>
+                        <button type="button" id="modalDeployMoreBtn" class="px-4 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                            <i class="fas fa-paper-plane"></i>
+                            Deploy More
+                        </button>
                     </div>
                 </div>
             </div>

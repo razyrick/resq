@@ -139,6 +139,7 @@ async function loadReports(page = 1, filters = {}) {
             currentReportsData = response.data;
             renderReports(response.data, response.pagination);
             showContent();
+            openIncidentFromQuery();
         } else {
             throw new Error(response.error || 'Failed to load reports');
         }
@@ -357,6 +358,7 @@ function populateIncidentModal(incident) {
     document.getElementById('modalCreatedAt').textContent = createdDate.toLocaleDateString();
     document.getElementById('modalCreatedAtDetailed').textContent = createdDate.toLocaleString();
     document.getElementById('modalUpdatedAt').textContent = updatedDate.toLocaleString();
+    renderLinkedPatientCard(incident);
 
     // Media
     const mediaContainer = document.getElementById('modalMedia');
@@ -402,6 +404,42 @@ function populateIncidentModal(incident) {
             proofImg: document.getElementById('agencyResolutionProofPhoto')
         });
     }
+}
+
+function renderLinkedPatientCard(incident) {
+    const card = document.getElementById('linkedPatientCard');
+    if (!card) return;
+
+    const patientId = incident.linked_patient_id || incident.patient_id || '';
+    if (!patientId) {
+        card.classList.add('hidden');
+        return;
+    }
+
+    card.classList.remove('hidden');
+    document.getElementById('linkedPatientName').textContent = incident.linked_patient_name || 'Unknown patient';
+    document.getElementById('linkedPatientReason').textContent = incident.linked_patient_reason || 'No reason provided';
+    document.getElementById('linkedPatientId').textContent = patientId;
+    document.getElementById('linkedPatientStatus').textContent = incident.linked_patient_status || 'Unknown';
+}
+
+function openIncidentFromQuery() {
+    const params = new URLSearchParams(window.location.search);
+    const incidentId = params.get('incident_id');
+    if (!incidentId || !Array.isArray(currentReportsData) || currentReportsData.length === 0) {
+        return;
+    }
+
+    const incident = currentReportsData.find((item) => item.incident_id === incidentId);
+    if (!incident) {
+        return;
+    }
+
+    const reportData = JSON.stringify(incident).replace(/"/g, '&quot;');
+    viewIncidentDetails(reportData);
+    params.delete('incident_id');
+    const nextUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+    window.history.replaceState({}, '', nextUrl);
 }
 
 // Close incident modal
@@ -564,6 +602,26 @@ function applyFilters() {
     loadReports(1, currentFilters);
 }
 
+function getInitialReportFilters() {
+    const params = new URLSearchParams(window.location.search);
+    const search = params.get('search') || '';
+    if (search) {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = search;
+        }
+    }
+
+    currentFilters = {
+        search: search,
+        status: '',
+        type: '',
+        severity: ''
+    };
+
+    return currentFilters;
+}
+
 // View media
 function viewMedia(photoUrl) {
     if (photoUrl) {
@@ -616,5 +674,5 @@ function updateUserInfo() {
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
     updateUserInfo();
-    loadReports();
+    loadReports(1, getInitialReportFilters());
 });

@@ -116,7 +116,7 @@ function renderPatients(rows, pagination) {
 
     if (!rows.length) {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="5" class="px-6 py-8 text-center text-slate-500">No patients found.</td>`;
+        tr.innerHTML = `<td colspan="6" class="px-6 py-8 text-center text-slate-500">No patients found.</td>`;
         tbody.appendChild(tr);
         renderPagination(pagination);
         return;
@@ -131,6 +131,13 @@ function renderPatients(rows, pagination) {
                 ? 'bg-green-100 text-green-800'
                 : 'bg-amber-100 text-amber-800';
         const reasonShort = (p.reason || '').length > 120 ? `${(p.reason || '').slice(0, 120)}…` : (p.reason || '—');
+        const linkedIncidentId = p.linked_incident_id || '';
+        const linkedIncident = linkedIncidentId
+            ? `<button type="button" data-incident-id="${escapeHtml(linkedIncidentId)}" class="open-linked-incident-btn text-left text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                    Incident ${escapeHtml(linkedIncidentId)}
+                </button>
+                <p class="text-xs text-slate-500">${escapeHtml(p.linked_incident_type || 'Incident')}</p>`
+            : '<span class="text-sm text-slate-400">Manual patient</span>';
         const canResolve = st === 'ongoing';
         const actions = canResolve
             ? `<button type="button" data-pid="${escapeHtml(p.patient_id)}" class="resolve-patient-btn px-3 py-1 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">Resolve</button>`
@@ -142,6 +149,7 @@ function renderPatients(rows, pagination) {
                 <p class="text-xs text-slate-500 font-mono">${escapeHtml(p.patient_id || '')}</p>
             </td>
             <td class="px-6 py-4 text-sm text-slate-600 max-w-md">${escapeHtml(reasonShort)}</td>
+            <td class="px-6 py-4">${linkedIncident}</td>
             <td class="px-6 py-4"><span class="px-2.5 py-0.5 text-xs font-medium rounded-full ${badge}">${escapeHtml(st)}</span></td>
             <td class="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">${formatDate(p.created_at)}</td>
             <td class="px-6 py-4">${actions}</td>`;
@@ -152,6 +160,14 @@ function renderPatients(rows, pagination) {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-pid');
             if (id) resolvePatient(id);
+        });
+    });
+    tbody.querySelectorAll('.open-linked-incident-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-incident-id');
+            if (id) {
+                window.location.href = `reports.html?search=${encodeURIComponent(id)}&incident_id=${encodeURIComponent(id)}`;
+            }
         });
     });
 
