@@ -30,6 +30,23 @@
             color: white;
         }
         
+        .main-tab {
+            transition: all 0.3s ease;
+        }
+        
+        .main-tab.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .ldrrmo-subtab {
+            transition: all 0.2s ease;
+        }
+        
+        .ldrrmo-subtab.active {
+            background-color: #eff6ff;
+        }
+        
         /* Custom scrollbar for barangay list */
         .barangay-list {
             max-height: 400px;
@@ -70,7 +87,7 @@
                         </div>
                         <div>
                             <h1 class="text-lg font-bold text-gray-900">Emergency Contacts</h1>
-                            <p class="text-xs text-gray-500">LADRRMO Hotline Numbers</p>
+                            <p class="text-xs text-gray-500">LDRRMO Hotline Numbers</p>
                         </div>
                     </div>
                 </div>
@@ -135,7 +152,7 @@
 
     <!-- Main Content -->
     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <!-- LADRRMO Hotline Numbers -->
+        <!-- LDRRMO Hotline Numbers -->
         <section class="mb-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-900">Emergency Contacts</h2>
@@ -148,35 +165,271 @@
             <!-- Tabs -->
             <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
                 <div class="flex overflow-x-auto">
-                    <button class="district-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-tab="ladrrmo">
-                        LADRRMO Contacts
+                    <button type="button" class="main-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-tab="ldrrmo">
+                        LDRRMO Contacts
                     </button>
-                    <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-tab="barangay">
+                    <button type="button" class="main-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-tab="barangay">
                         Barangay Contacts
                     </button>
                 </div>
             </div>
+
+            <!-- District tabs: always visible; drives content for both LDRRMO and Barangay panels -->
+            <div id="district-tabs-bar" class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
+                <div class="flex overflow-x-auto">
+                    <button type="button" class="district-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-district="1">
+                        1st District
+                    </button>
+                    <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="2">
+                        2nd District
+                    </button>
+                    <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="3">
+                        3rd District
+                    </button>
+                    <button type="button" class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="4">
+                        4th District
+                    </button>
+                </div>
+            </div>
             
-            <!-- LADRRMO Contacts Tab -->
-            <div id="ladrrmo-tab" class="tab-content">
-                <!-- District Tabs -->
+            <!-- LDRRMO Contacts Tab: one view at a time (district officers vs province hotlines) -->
+            <div id="ldrrmo-tab" class="tab-content">
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
-                    <div class="flex overflow-x-auto">
-                        <button class="district-tab active px-6 py-3 font-medium text-sm border-b-2 border-blue-600" data-district="1">
-                            1st District
+                    <div class="flex overflow-x-auto border-b border-gray-200 bg-slate-50">
+                        <button type="button" class="ldrrmo-subtab active px-4 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600" data-ldrrmo-view="district">
+                            District MDRRMO contacts
                         </button>
-                        <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="2">
-                            2nd District
-                        </button>
-                        <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="3">
-                            3rd District
-                        </button>
-                        <button class="district-tab px-6 py-3 font-medium text-sm text-gray-600 hover:text-gray-900" data-district="4">
-                            4th District
+                        <button type="button" class="ldrrmo-subtab px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900" data-ldrrmo-view="hotlines">
+                            Province-wide hotlines
                         </button>
                     </div>
                 </div>
-                
+                <div id="ldrrmo-panel-hotlines" class="ldrrmo-output-panel hidden">
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-slate-50">
+                        <h3 class="text-sm font-semibold text-gray-900">Emergency hotline numbers</h3>
+                        <p class="text-xs text-gray-500 mt-0.5">Key agencies (Laguna)</p>
+                    </div>
+                    <div class="divide-y divide-gray-200">
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-hospital-user text-amber-700"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">MDRRMO Sta. Cruz (SCL)</h3>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-mobile-alt text-gray-500"></i>0921-962-0602
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="09219620602">
+                                    <i class="fas fa-phone"></i> Call
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-landmark text-amber-700"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">PDRRMO</h3>
+                                            <p class="text-sm text-gray-600">Provincial DRRMO</p>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>(049) 501-4672
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="0495014672">
+                                    <i class="fas fa-phone"></i> Call
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-fire-extinguisher text-amber-700"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Fire station / BFP</h3>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>808-2278
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="8082278">
+                                    <i class="fas fa-phone"></i> Call
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user-shield text-amber-700"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Police / MP</h3>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>501-5971
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="5015971">
+                                    <i class="fas fa-phone"></i> Call
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-ambulance text-amber-700"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Laguna Rescue</h3>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>501-4672
+                                                </span>
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>523-1944
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="5014672">
+                                        <i class="fas fa-phone"></i> Call 1
+                                    </button>
+                                    <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="5231944">
+                                        <i class="fas fa-phone"></i> Call 2
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-hands-helping text-amber-700"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">DSWD</h3>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>501-9372
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="5019372">
+                                    <i class="fas fa-phone"></i> Call
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-balance-scale text-amber-700"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">DILG</h3>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>501-7847
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="5017847">
+                                    <i class="fas fa-phone"></i> Call
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-notes-medical text-amber-700"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">Philippine Red Cross</h3>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>501-501-1113
+                                                </span>
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>557-1800
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="0495011113">
+                                        <i class="fas fa-phone"></i> Call 1
+                                    </button>
+                                    <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="5571800">
+                                        <i class="fas fa-phone"></i> Call 2
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-4 contact-item">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="flex-1">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-bolt text-amber-700"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">MERALCO</h3>
+                                            <div class="mt-1 flex flex-wrap gap-2">
+                                                <span class="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-phone text-gray-500"></i>1622-7789
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 call-btn" data-number="16227789">
+                                    <i class="fas fa-phone"></i> Call
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+                <div id="ldrrmo-panel-district" class="ldrrmo-output-panel">
                 <!-- District Contacts -->
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                     <!-- 1st District -->
@@ -1232,14 +1485,21 @@
                         </div>
                     </div>
                 </div>
+                </div>
+                </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Barangay Contacts Tab -->
-<div id="barangay-tab" class="tab-content hidden">
+            <!-- Barangay Contacts Tab -->
+            <div id="barangay-tab" class="tab-content hidden">
     <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+
+        <div id="barangayToolbar" class="hidden p-4 border-b border-gray-200">
+            <label for="barangayContactFilter" class="block text-xs font-medium text-gray-500 mb-1">Barangay</label>
+            <select id="barangayContactFilter" class="w-full max-w-xl border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Select a barangay…</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-2">Contacts for the selected barangay (list matches the district tab above when municipality data is available).</p>
+        </div>
 
         <!-- Loading State -->
         <div id="barangayLoading" class="p-8 text-center">
@@ -1275,7 +1535,7 @@
                 <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                     <i class="fas fa-map-marker-alt text-gray-400 text-xl"></i>
                 </div>
-                <p class="text-gray-600">No barangays found</p>
+                <p id="barangayEmptyMessage" class="text-gray-600">No barangays found</p>
             </div>
         </div>
     </div>

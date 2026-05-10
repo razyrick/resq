@@ -200,6 +200,12 @@ function initializeMap(liveIncidents) {
     // Update map info
     document.getElementById('mapInfo').textContent = 
         `Showing ${validIncidents.length} incident${validIncidents.length !== 1 ? 's' : ''} on map`;
+
+    setTimeout(() => {
+        if (dashboardMap) {
+            dashboardMap.invalidateSize();
+        }
+    }, 250);
 }
 
 // Fullscreen map

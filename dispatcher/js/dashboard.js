@@ -4,6 +4,8 @@ let userData = null;
 let dashboardMap = null;
 let fullscreenMapInstance = null;
 let monthlyChart = null;
+/** @type {L.Map[]} */
+let dashboardMiniMaps = [];
 
 // Get stored user data
 function getStoredUserData() {
@@ -41,25 +43,59 @@ function loadUserData() {
     }
 }
 
+/** Parse body once; avoids "Unexpected end of JSON input" on empty/HTML responses. */
+async function parseResponseJson(response) {
+    const text = await response.text();
+    if (text == null || String(text).trim() === '') {
+        throw new Error(`Empty response from server (HTTP ${response.status}). Check API / PHP errors.`);
+    }
+    try {
+        return JSON.parse(text);
+    } catch {
+        throw new Error(
+            `Non-JSON response (HTTP ${response.status}). First bytes: ${String(text).slice(0, 200)}`
+        );
+    }
+}
+
 // Fetch dashboard stats
 async function fetchDashboardStats() {
     try {
-        const response = await fetch(`${API_BASE_URL}/dispatcher/dashboard`, {
+        const response = await fetch(`${API_BASE_URL}/dispatcher/dashboard?stats_scope=today`, {
             method: 'GET',
             headers: getHeaders()
         });
 
+        const data = await parseResponseJson(response);
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
         return data;
     } catch (error) {
         console.error('Error fetching dashboard stats:', error);
         throw error;
     }
+}
+
+/** Same endpoint & query defaults as `dispatcher/js/incidents.js` (today, no extra filters). */
+async function fetchSidebarIncidentsSameAsActiveIncidentsPage() {
+    const params = new URLSearchParams({
+        page: '1',
+        limit: '12',
+        date_scope: 'today'
+    });
+    const response = await fetch(`${API_BASE_URL}/dispatcher/incidents?${params}`, {
+        method: 'GET',
+        headers: getHeaders()
+    });
+
+    const data = await parseResponseJson(response);
+    if (!response.ok) {
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+    return data;
 }
 
 // Update statistics
@@ -87,7 +123,7 @@ function updateStatistics(stats) {
                 </div>
             </div>
             <h3 class="text-3xl font-bold mb-1">${stats.active_incidents}</h3>
-            <p class="text-red-100">Active Incidents</p>
+            <p class="text-red-100">Active Incidents Today</p>
         </div>
 
         <!-- Available Agencies -->
@@ -102,14 +138,14 @@ function updateStatistics(stats) {
         </div>
 
         <!-- Resolved Cases -->
-        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white">
+        <div class="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl p-6 text-white">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                     <i class="fas fa-check-circle text-white text-xl"></i>
                 </div>
             </div>
             <h3 class="text-3xl font-bold mb-1">${stats.resolved_cases}</h3>
-            <p class="text-purple-100">Resolved Cases</p>
+            <p class="text-emerald-100">Resolved Cases</p>
         </div>
     `;
 }
@@ -216,41 +252,116 @@ function createMonthlyIncidentsChart(monthlyData) {
     });
 }
 
-// Render active incidents
+function formatLocationLine(incident) {
+    const barangayLabel = incident.baranggay
+        ? `Barangay: ${incident.baranggay}`
+        : 'Barangay: unknown';
+    let coordPart = '';
+    const lat = incident.latitude != null ? parseFloat(incident.latitude) : NaN;
+    const lng = incident.longitude != null ? parseFloat(incident.longitude) : NaN;
+    if (!isNaN(lat) && !isNaN(lng)) {
+        coordPart = ` · ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    }
+    return `${barangayLabel}${coordPart}`;
+}
+
+function destroyDashboardMiniMaps() {
+    dashboardMiniMaps.forEach((m) => {
+        try {
+            m.remove();
+        } catch (e) {
+            /* ignore */
+        }
+    });
+    dashboardMiniMaps = [];
+}
+
+/**
+ * One small non-interactive map per sidebar row (Leaflet).
+ * @param {Array<{ latitude?: unknown, longitude?: unknown }>} incidents Same rows as rendered cards (same order).
+ */
+function initDashboardMiniMaps(incidents) {
+    destroyDashboardMiniMaps();
+    if (typeof L === 'undefined') return;
+
+    incidents.forEach((incident, index) => {
+        const el = document.getElementById(`dash-mini-map-${index}`);
+        if (!el) return;
+
+        const lat = incident.latitude != null ? parseFloat(String(incident.latitude)) : NaN;
+        const lng = incident.longitude != null ? parseFloat(String(incident.longitude)) : NaN;
+        const coordsOk = !isNaN(lat) && !isNaN(lng) && !(lat === 0 && lng === 0);
+
+        if (!coordsOk) {
+            el.innerHTML =
+                '<div class="flex items-center justify-center h-full text-xs text-slate-400 bg-slate-100 rounded-lg">No location</div>';
+            return;
+        }
+
+        const map = L.map(el, {
+            zoomControl: false,
+            dragging: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            keyboard: false,
+            attributionControl: false,
+        }).setView([lat, lng], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+        }).addTo(map);
+
+        L.circleMarker([lat, lng], {
+            radius: 6,
+            fillColor: '#2563eb',
+            color: '#fff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.9,
+        }).addTo(map);
+
+        dashboardMiniMaps.push(map);
+        requestAnimationFrame(() => {
+            map.invalidateSize();
+        });
+    });
+}
+
+// Sidebar preview cards for today's incidents.
 function renderPriorityIncidents(incidents) {
     const container = document.getElementById('priorityIncidentsList');
     if (!container) return;
-    
-    if (incidents.length === 0) {
+
+    destroyDashboardMiniMaps();
+
+    const rows = Array.isArray(incidents) ? incidents.slice(0, 6) : [];
+
+    if (rows.length === 0) {
         container.innerHTML = `
             <div class="text-center py-8 text-slate-500">
                 <i class="fas fa-check-circle text-slate-400 text-3xl mb-2"></i>
-                <p class="mt-2">No active incidents at the moment</p>
+                <p class="mt-2">No incidents for today</p>
             </div>
         `;
         return;
     }
 
     let html = '';
-    
-    // Get active incidents (not resolved)
-    const activeIncidents = incidents.filter(incident => 
-        incident.status !== 'resolved'
-    ).slice(0, 6); // Show only top 6
-    
-    activeIncidents.forEach(incident => {
+
+    rows.forEach((incident, index) => {
         const typeInfo = getIncidentTypeInfo(incident.incident_type);
         const severityInfo = getSeverityInfo(incident.severity_level);
         const statusInfo = getStatusInfo(incident.status);
-        
+
         html += `
-            <div class="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition cursor-pointer" onclick="viewIncidentDetails('${incident.incident_id}')">
+            <div class="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition cursor-pointer relative z-0" onclick="viewIncidentDetails(${JSON.stringify(incident.incident_id)})">
                 <div class="flex items-start gap-3">
                     <div class="w-10 h-10 ${typeInfo.bgColor} rounded-lg flex items-center justify-center flex-shrink-0">
                         <i class="fas ${typeInfo.icon} ${typeInfo.textColor}"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <span class="font-semibold text-slate-900 truncate">${typeInfo.text}</span>
                             <span class="px-2 py-0.5 ${severityInfo.bgColor} ${severityInfo.textColor} text-xs font-medium rounded flex-shrink-0">
                                 <i class="fas ${severityInfo.icon} mr-1"></i>${severityInfo.text}
@@ -259,17 +370,22 @@ function renderPriorityIncidents(incidents) {
                                 <i class="fas ${statusInfo.icon} mr-1"></i>${statusInfo.text}
                             </span>
                         </div>
-                        <p class="text-sm text-slate-600 mb-2 line-clamp-2">${incident.description}</p>
-                        <div class="flex flex-wrap gap-4 text-xs text-slate-500">
+                        <p class="text-sm text-slate-600 mb-2 line-clamp-2">${incident.description ?? ''}</p>
+                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mb-3">
+                            <span class="flex items-center gap-1 min-w-0">
+                                <i class="fas fa-location-dot flex-shrink-0"></i>
+                                <span class="truncate">${formatLocationLine(incident)}</span>
+                            </span>
                             <span class="flex items-center gap-1">
                                 <i class="fas fa-clock"></i>
                                 ${formatDate(incident.created_at)}
                             </span>
-                            <span class="flex items-center gap-1">
+                            <span class="flex items-center gap-1 font-mono truncate">
                                 <i class="fas fa-hashtag"></i>
                                 ${incident.incident_id}
                             </span>
                         </div>
+                        <div id="dash-mini-map-${index}" class="dispatcher-mini-map w-full rounded-lg overflow-hidden border border-slate-200 pointer-events-none"></div>
                     </div>
                 </div>
             </div>
@@ -277,6 +393,8 @@ function renderPriorityIncidents(incidents) {
     });
 
     container.innerHTML = html;
+
+    setTimeout(() => initDashboardMiniMaps(rows), 80);
 }
 
 // Helper functions
@@ -509,7 +627,14 @@ function getIncidentTypeInfo(type) {
     return types[normalizedType] || types['other'];
 }
 
+function normalizeIncidentStatusKey(status) {
+    const s = String(status ?? '').trim().toLowerCase();
+    if (s === 'complete' || s === 'closed') return 'resolved';
+    return s;
+}
+
 function getStatusInfo(status) {
+    const key = normalizeIncidentStatusKey(status);
     const statuses = {
         'pending': { 
             text: 'Pending', 
@@ -529,7 +654,7 @@ function getStatusInfo(status) {
         },
         'resolved': { 
             text: 'Resolved', 
-            color: 'green', 
+            color: '#16a34a', 
             bgColor: 'bg-green-100',
             textColor: 'text-green-800',
             borderColor: 'border-green-200',
@@ -545,7 +670,7 @@ function getStatusInfo(status) {
         }
     };
     
-    return statuses[status] || statuses['pending'];
+    return statuses[key] || statuses['pending'];
 }
 
 function getSeverityInfo(severity) {
@@ -578,6 +703,14 @@ function getSeverityInfo(severity) {
 
 // Initialize dashboard map with incident coordinates
 function initDashboardMap(incidentCoordinates) {
+    const mapEl = document.getElementById('dashboardMap');
+    if (!mapEl) return;
+
+    if (dashboardMap) {
+        dashboardMap.remove();
+        dashboardMap = null;
+    }
+
     dashboardMap = L.map('dashboardMap').setView([14.2691, 121.4113], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
@@ -628,6 +761,12 @@ function initDashboardMap(incidentCoordinates) {
             </div>
         `);
     });
+
+    setTimeout(() => {
+        if (dashboardMap) {
+            dashboardMap.invalidateSize();
+        }
+    }, 250);
 }
 
 // Fullscreen map
@@ -639,7 +778,11 @@ function openFullscreenMap() {
             attribution: '© OpenStreetMap contributors'
         }).addTo(fullscreenMapInstance);
     }
-    setTimeout(() => fullscreenMapInstance.invalidateSize(), 100);
+    setTimeout(() => {
+        if (fullscreenMapInstance) {
+            fullscreenMapInstance.invalidateSize();
+        }
+    }, 250);
 }
 
 function closeFullscreenMap() {
@@ -662,14 +805,25 @@ function logout() {
 async function loadDashboardData() {
     try {
         const data = await fetchDashboardStats();
-        
-        if (data.success) {
-            updateStatistics(data.data.stats);
-            createMonthlyIncidentsChart(data.data.monthly_incidents);
-            renderPriorityIncidents(data.data.incident_coordinates);
-            initDashboardMap(data.data.incident_coordinates);
-        } else {
+
+        if (!data.success) {
             throw new Error(data.error || 'Failed to load dashboard data');
+        }
+
+        updateStatistics(data.data.stats);
+        createMonthlyIncidentsChart(data.data.monthly_incidents);
+        initDashboardMap(data.data.incident_coordinates);
+
+        try {
+            const incidentsPayload = await fetchSidebarIncidentsSameAsActiveIncidentsPage();
+            renderPriorityIncidents(
+                incidentsPayload.success && Array.isArray(incidentsPayload.data)
+                    ? incidentsPayload.data
+                    : []
+            );
+        } catch (sidebarErr) {
+            console.error('Error loading sidebar incidents:', sidebarErr);
+            renderPriorityIncidents([]);
         }
     } catch (error) {
         console.error('Error loading dashboard data:', error);

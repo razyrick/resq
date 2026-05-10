@@ -31,7 +31,7 @@ function getHeaders() {
     };
 }
 
-// API Request Helper
+// API Request Helper — read body as text first so empty/HTML responses don't break response.json()
 const apiRequest = async (endpoint, options = {}) => {
     const defaultOptions = {
         headers: getHeaders()
@@ -47,11 +47,23 @@ const apiRequest = async (endpoint, options = {}) => {
             }
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        const text = await response.text();
+        if (text == null || String(text).trim() === '') {
+            throw new Error(`Empty response from server (HTTP ${response.status})`);
+        }
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            throw new Error(
+                `Non-JSON response (HTTP ${response.status}): ${String(text).slice(0, 160)}`
+            );
         }
 
-        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        }
+
         return data;
     } catch (error) {
         console.error('API Request failed:', error);

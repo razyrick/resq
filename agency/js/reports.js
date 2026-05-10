@@ -139,6 +139,7 @@ async function loadReports(page = 1, filters = {}) {
             currentReportsData = response.data;
             renderReports(response.data, response.pagination);
             showContent();
+            openIncidentFromQuery();
         } else {
             throw new Error(response.error || 'Failed to load reports');
         }
@@ -284,6 +285,12 @@ function initializeMap(lat, lng, locationName) {
         .addTo(incidentMap)
         .bindPopup(`<b>${locationName || 'Incident Location'}</b><br>Lat: ${lat}<br>Lng: ${lng}`)
         .openPopup();
+
+    setTimeout(() => {
+        if (incidentMap) {
+            incidentMap.invalidateSize();
+        }
+    }, 250);
 }
 
 // Open directions in new tab
@@ -351,6 +358,7 @@ function populateIncidentModal(incident) {
     document.getElementById('modalCreatedAt').textContent = createdDate.toLocaleDateString();
     document.getElementById('modalCreatedAtDetailed').textContent = createdDate.toLocaleString();
     document.getElementById('modalUpdatedAt').textContent = updatedDate.toLocaleString();
+    renderLinkedPatientCard(incident);
 
     // Media
     const mediaContainer = document.getElementById('modalMedia');
@@ -385,6 +393,53 @@ function populateIncidentModal(incident) {
         markResolvedBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> Mark as Resolved';
         markResolvedBtn.className = 'flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2';
     }
+
+    if (typeof applyResolutionDetailPanel === 'function') {
+        applyResolutionDetailPanel(incident, {
+            section: document.getElementById('agencyResolutionSection'),
+            meta: document.getElementById('agencyResolutionMeta'),
+            notes: document.getElementById('agencyResolutionNotes'),
+            emptyHint: document.getElementById('agencyResolutionEmptyHint'),
+            photoWrap: document.getElementById('agencyResolutionPhotoWrap'),
+            proofImg: document.getElementById('agencyResolutionProofPhoto')
+        });
+    }
+}
+
+function renderLinkedPatientCard(incident) {
+    const card = document.getElementById('linkedPatientCard');
+    if (!card) return;
+
+    const patientId = incident.linked_patient_id || incident.patient_id || '';
+    if (!patientId) {
+        card.classList.add('hidden');
+        return;
+    }
+
+    card.classList.remove('hidden');
+    document.getElementById('linkedPatientName').textContent = incident.linked_patient_name || 'Unknown patient';
+    document.getElementById('linkedPatientReason').textContent = incident.linked_patient_reason || 'No reason provided';
+    document.getElementById('linkedPatientId').textContent = patientId;
+    document.getElementById('linkedPatientStatus').textContent = incident.linked_patient_status || 'Unknown';
+}
+
+function openIncidentFromQuery() {
+    const params = new URLSearchParams(window.location.search);
+    const incidentId = params.get('incident_id');
+    if (!incidentId || !Array.isArray(currentReportsData) || currentReportsData.length === 0) {
+        return;
+    }
+
+    const incident = currentReportsData.find((item) => item.incident_id === incidentId);
+    if (!incident) {
+        return;
+    }
+
+    const reportData = JSON.stringify(incident).replace(/"/g, '&quot;');
+    viewIncidentDetails(reportData);
+    params.delete('incident_id');
+    const nextUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+    window.history.replaceState({}, '', nextUrl);
 }
 
 // Close incident modal
@@ -398,56 +453,95 @@ function closeIncidentModal() {
     }
 }
 
-// Mark incident as resolved
+// Mark incident as resolved (proof photo required; notes optional for reporter history)
 async function markAsResolved() {
     if (!currentIncident) return;
 
-    const result = await Swal.fire({
-        title: 'Mark as Resolved?',
-        text: 'Are you sure you want to mark this incident as resolved?',
+    const { isConfirmed, value } = await Swal.fire({
+        title: 'Mark as resolved',
+        customClass: {
+            popup: 'swal-resolve-case'
+        },
+        html: `
+            <div class="swal-resolve-fields w-full max-w-full box-border overflow-x-hidden text-left">
+                <p class="text-sm text-slate-600 mb-3">A proof photo is required. Resolution notes are optional.</p>
+                <label class="block text-xs font-medium text-slate-600 mb-1" for="swal-agency-res-photo">Proof photo (required)</label>
+                <input type="file" id="swal-agency-res-photo" accept="image/*" class="mb-3 rounded border border-slate-200 bg-white px-2 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm" />
+                <label class="block text-xs font-medium text-slate-600 mb-1" for="swal-agency-res-notes">Resolution notes (optional)</label>
+                <textarea id="swal-agency-res-notes" class="rounded border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400" rows="3" placeholder="What was done on scene"></textarea>
+            </div>
+        `,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#10b981',
         cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, mark as resolved',
-        cancelButtonText: 'Cancel'
+        confirmButtonText: 'Submit resolution',
+        cancelButtonText: 'Cancel',
+        preConfirm: async () => {
+            const notesEl = document.getElementById('swal-agency-res-notes');
+            const fileEl = document.getElementById('swal-agency-res-photo');
+            const notes = notesEl ? notesEl.value.trim() : '';
+            let photoUrl = '';
+            if (!fileEl || !fileEl.files || !fileEl.files[0]) {
+                Swal.showValidationMessage('Please upload a proof photo.');
+                return false;
+            }
+            if (typeof uploadResolutionImageToCloudinary !== 'function') {
+                Swal.showValidationMessage('Upload helper not loaded. Refresh the page.');
+                return false;
+            }
+            try {
+                photoUrl = await uploadResolutionImageToCloudinary(fileEl.files[0]);
+            } catch (err) {
+                Swal.showValidationMessage(err.message || 'Image upload failed');
+                return false;
+            }
+            return { photoUrl, notes };
+        }
     });
 
-    if (result.isConfirmed) {
-        try {
-            const response = await apiRequest('/agency/reports', {
-                method: 'PUT',
-                body: JSON.stringify({
-                    incident_id: currentIncident.incident_id,
-                    status: 'resolved'
-                })
-            });
+    if (!isConfirmed || !value) {
+        return;
+    }
 
-            if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Incident Resolved!',
-                    text: 'The incident has been marked as resolved.',
-                    confirmButtonColor: '#10b981',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-
-                // Close modal and reload reports
-                closeIncidentModal();
-                loadReports(currentPage, currentFilters);
-            } else {
-                throw new Error(response.error || 'Failed to mark incident as resolved');
-            }
-        } catch (error) {
-            console.error('Error marking incident as resolved:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to mark incident as resolved: ' + error.message,
-                confirmButtonColor: '#ef4444'
-            });
+    try {
+        const body = {
+            incident_id: currentIncident.incident_id,
+            status: 'resolved',
+            resolution_photo: value.photoUrl
+        };
+        if (value.notes) {
+            body.resolution_notes = value.notes;
         }
+
+        const response = await apiRequest('/agency/reports', {
+            method: 'PUT',
+            body: JSON.stringify(body)
+        });
+
+        if (response.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Incident Resolved!',
+                text: 'The incident has been marked as resolved.',
+                confirmButtonColor: '#10b981',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            closeIncidentModal();
+            loadReports(currentPage, currentFilters);
+        } else {
+            throw new Error(response.error || 'Failed to mark incident as resolved');
+        }
+    } catch (error) {
+        console.error('Error marking incident as resolved:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to mark incident as resolved: ' + error.message,
+            confirmButtonColor: '#ef4444'
+        });
     }
 }
 
@@ -508,6 +602,26 @@ function applyFilters() {
     loadReports(1, currentFilters);
 }
 
+function getInitialReportFilters() {
+    const params = new URLSearchParams(window.location.search);
+    const search = params.get('search') || '';
+    if (search) {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = search;
+        }
+    }
+
+    currentFilters = {
+        search: search,
+        status: '',
+        type: '',
+        severity: ''
+    };
+
+    return currentFilters;
+}
+
 // View media
 function viewMedia(photoUrl) {
     if (photoUrl) {
@@ -560,5 +674,5 @@ function updateUserInfo() {
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
     updateUserInfo();
-    loadReports();
+    loadReports(1, getInitialReportFilters());
 });

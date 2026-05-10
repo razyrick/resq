@@ -167,6 +167,20 @@
                                     Multiple families may be affected. Immediate response required.
                                 </p>
                             </div>
+
+                            <!-- Resolution details (resolved incidents; optional session hand-off) -->
+                            <div id="deployPageResolutionOuter" class="hidden mt-4">
+                                <h5 class="text-sm font-semibold text-slate-900 mb-2">Resolution details</h5>
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <p id="deployPageResolutionMeta" class="text-xs font-medium text-green-800 mb-2 hidden"></p>
+                                    <p id="deployPageResolutionNotes" class="text-sm text-green-900 whitespace-pre-wrap hidden"></p>
+                                    <p id="deployPageResolutionEmptyHint" class="text-sm text-green-700 hidden">No resolution notes or proof photo were recorded.</p>
+                                    <div id="deployPageResolutionPhotoWrap" class="mt-3 hidden">
+                                        <p class="text-xs font-medium text-green-800 mb-1">Proof photo</p>
+                                        <img id="deployPageResolutionProofPhoto" src="" alt="Resolution proof" class="max-h-64 max-w-full rounded-lg border border-green-200 cursor-pointer object-contain" onclick="window.open(this.src, '_blank')" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -441,6 +455,7 @@
         </div>
     </div>
 
+    <script src="../js/resolution-detail-helpers.js"></script>
     <script>
         // Initialize map
         const map = L.map('incidentMap').setView([14.2456, 121.4747], 15);
@@ -569,6 +584,35 @@
             localStorage.clear();
             window.location.href = '../index.html';
         }
+
+        (function initDeployPageResolution() {
+            if (typeof applyResolutionDetailPanel !== 'function') return;
+            var incident = null;
+            try {
+                var raw = sessionStorage.getItem('resq_deploy_page_incident');
+                if (raw) {
+                    incident = JSON.parse(raw);
+                    sessionStorage.removeItem('resq_deploy_page_incident');
+                }
+            } catch (e) {}
+            if (!incident) {
+                incident = {
+                    status: 'resolved',
+                    resolved_by_role: 'agency',
+                    resolved_at: new Date().toISOString(),
+                    resolution_notes: 'Layout preview: after resolution, closure notes and proof photo appear here on the live deploy workflow.',
+                    resolution_photo: ''
+                };
+            }
+            applyResolutionDetailPanel(incident, {
+                section: document.getElementById('deployPageResolutionOuter'),
+                meta: document.getElementById('deployPageResolutionMeta'),
+                notes: document.getElementById('deployPageResolutionNotes'),
+                emptyHint: document.getElementById('deployPageResolutionEmptyHint'),
+                photoWrap: document.getElementById('deployPageResolutionPhotoWrap'),
+                proofImg: document.getElementById('deployPageResolutionProofPhoto')
+            });
+        })();
     </script>
 </body>
 </html>

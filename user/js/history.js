@@ -221,6 +221,14 @@ function getStatusInfo(status) {
             textColor: 'text-green-800',
             borderColor: 'border-green-200',
             icon: 'fa-check-circle'
+        },
+        'dispatched': {
+            text: 'DISPATCHED',
+            color: 'orange',
+            bgColor: 'bg-orange-100',
+            textColor: 'text-orange-800',
+            borderColor: 'border-orange-200',
+            icon: 'fa-paper-plane'
         }
     };
     
@@ -270,32 +278,50 @@ function calculateStatus(incident) {
     return 'resolved';
 }
 
-// Create status progress bar
-function createStatusProgress(status) {
+function getStatusProgressCaption(statusRaw) {
+    const status = typeof statusRaw === 'string' ? statusRaw : 'pending';
+    const captions = {
+        pending:
+            'Your report is in the queue. Responders will review it soon.',
+        ongoing:
+            'This report is being handled. Agencies or responders are actively involved.',
+        resolved: 'This report is complete and marked resolved.'
+    };
+    return captions[status] || captions.pending;
+}
+
+// Create horizontal stepper (pending → ongoing → resolved)
+function createStatusProgress(statusRaw) {
+    const order = ['pending', 'ongoing', 'resolved'];
+    const mapped = typeof statusRaw === 'string' ? statusRaw : 'pending';
+    const idx = order.indexOf(mapped);
+    const currentIndex = idx >= 0 ? idx : 0;
+
     const steps = [
-        { id: 'pending', label: 'Pending', icon: 'fa-clock' },
-        { id: 'ongoing', label: 'Ongoing', icon: 'fa-spinner' },
-        { id: 'resolved', label: 'Resolved', icon: 'fa-check-circle' }
+        { id: 'pending', label: 'Pending', hint: 'Submitted', icon: 'fa-clock' },
+        { id: 'ongoing', label: 'Ongoing', hint: 'In progress', icon: 'fa-spinner' },
+        { id: 'resolved', label: 'Resolved', hint: 'Closed', icon: 'fa-circle-check' }
     ];
 
     let html = '';
     steps.forEach((step, index) => {
-        let stepClass = '';
-        if (step.id === status) {
-            stepClass = 'active';
-        } else if (
-            (status === 'ongoing' && step.id === 'pending') ||
-            (status === 'resolved' && (step.id === 'pending' || step.id === 'ongoing'))
-        ) {
-            stepClass = 'completed';
-        }
+        let stepKind = 'upcoming';
+        if (index < currentIndex) stepKind = 'completed';
+        else if (index === currentIndex) stepKind = 'active';
+
+        const currentAttr = stepKind === 'active' ? ' aria-current="step"' : '';
 
         html += `
-            <div class="status-step ${stepClass}">
-                <div class="status-dot">
-                    <i class="fas ${step.icon}"></i>
+            <div class="status-step ${stepKind}" role="listitem" data-phase="${step.id}">
+                <div class="status-dot"${currentAttr}>
+                    <span class="status-dot-inner">
+                        <i class="fas ${step.icon}" aria-hidden="true"></i>
+                    </span>
                 </div>
-                <span class="status-label">${step.label}</span>
+                <div class="status-step-text">
+                    <span class="status-label">${step.label}</span>
+                    <span class="status-step-hint">${step.hint}</span>
+                </div>
             </div>
         `;
     });
@@ -343,6 +369,12 @@ function initIncidentMap(lat, lng) {
             .addTo(incidentMap)
             .bindPopup('Incident Location')
             .openPopup();
+
+        setTimeout(() => {
+            if (incidentMap) {
+                incidentMap.invalidateSize();
+            }
+        }, 250);
     } catch (error) {
         console.error('Error initializing map:', error);
     }
@@ -385,11 +417,14 @@ function renderIncidents(incidents) {
         
         incidentsByMonth[monthYear].forEach(incident => {
             const typeInfo = getIncidentTypeInfo(incident.incident_type);
-            const status = getIncidentStatus(incident.status);
+            const status = getIncidentStatus(incident);
             const statusInfo = getStatusInfo(incident.status);
             const severityInfo = getSeverityInfo(incident.severity_level);
             const hasPhoto = hasValidPhoto(incident.photo);
             const isRated = incident.user_rated || false;
+            const resolutionProofUrl = hasValidPhoto(incident.resolution_photo)
+                ? String(incident.resolution_photo).trim()
+                : '';
             
             html += `
                 <div class="report-card bg-white rounded-lg shadow-sm overflow-hidden border-l-4 ${statusInfo.borderColor}" data-status="${status}" data-search="${incident.description.toLowerCase()} ${incident.incident_type.toLowerCase()}">
@@ -430,6 +465,19 @@ function renderIncidents(incidents) {
                                             </div>
                                         </div>
                                     </div>
+                                ` : ''}
+                                ${resolutionProofUrl ? `
+                                    <div class="mb-2">
+                                        <p class="text-xs font-medium text-gray-700 mb-1"><i class="fas fa-check-circle text-green-600 mr-1"></i>Proof of response</p>
+                                        <div class="image-gallery">
+                                            <div class="image-item" onclick='previewImage(${JSON.stringify(resolutionProofUrl)}, ${JSON.stringify([resolutionProofUrl])})'>
+                                                <img src="${resolutionProofUrl}" alt="Resolution proof" class="rounded border border-green-200" onerror="this.style.display='none'">
+                                            </div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                ${incident.resolution_notes && String(incident.resolution_notes).trim() ? `
+                                    <p class="text-xs text-gray-600 mb-2 line-clamp-2"><span class="font-medium text-gray-700">Resolution notes:</span> ${String(incident.resolution_notes).trim()}</p>
                                 ` : ''}
                                 
                                 <div class="flex flex-wrap gap-3 text-xs text-gray-500">
@@ -507,6 +555,10 @@ function showIncidentModal(incidentId) {
     if (statusProgress) {
         statusProgress.innerHTML = createStatusProgress(status);
     }
+    const statusCaptionEl = document.getElementById('statusProgressCaption');
+    if (statusCaptionEl) {
+        statusCaptionEl.textContent = getStatusProgressCaption(status);
+    }
 
     // Update modal header with type icon
     const typeIcon = document.getElementById('modalTypeIcon');
@@ -573,7 +625,49 @@ function showIncidentModal(incidentId) {
             responseInfo.classList.remove('hidden');
             const responseDetails = document.getElementById('modalResponseDetails');
             if (responseDetails) {
-                responseDetails.textContent = 'This incident has been successfully resolved by our emergency response team.';
+                responseDetails.textContent = 'This incident has been marked resolved.';
+            }
+            const metaEl = document.getElementById('modalResolvedMeta');
+            const notesEl = document.getElementById('modalResolutionNotes');
+            const photoWrap = document.getElementById('modalResolutionPhotoWrap');
+            const photoEl = document.getElementById('modalResolutionPhoto');
+
+            const roleLabel = incident.resolved_by_role === 'agency'
+                ? 'Agency'
+                : (incident.resolved_by_role === 'barangay' ? 'Barangay' : 'Responder');
+            const resolvedAt = incident.resolved_at ? formatDate(incident.resolved_at) : '';
+
+            if (metaEl) {
+                const metaParts = [`Resolved by: ${roleLabel}`];
+                if (resolvedAt) {
+                    metaParts.push(`Completed: ${resolvedAt}`);
+                }
+                metaEl.textContent = metaParts.join(' · ');
+                metaEl.classList.remove('hidden');
+            }
+
+            if (notesEl) {
+                const notes = (incident.resolution_notes && String(incident.resolution_notes).trim()) ? String(incident.resolution_notes).trim() : '';
+                if (notes) {
+                    notesEl.textContent = notes;
+                    notesEl.classList.remove('hidden');
+                } else {
+                    notesEl.textContent = '';
+                    notesEl.classList.add('hidden');
+                }
+            }
+
+            if (photoWrap && photoEl) {
+                const proof = incident.resolution_photo && String(incident.resolution_photo).trim() ? String(incident.resolution_photo).trim() : '';
+                if (proof) {
+                    photoEl.src = proof;
+                    photoEl.onclick = () => previewImage(proof, [proof]);
+                    photoWrap.classList.remove('hidden');
+                } else {
+                    photoEl.removeAttribute('src');
+                    photoEl.onclick = null;
+                    photoWrap.classList.add('hidden');
+                }
             }
         } else {
             responseInfo.classList.add('hidden');

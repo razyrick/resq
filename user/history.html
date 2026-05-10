@@ -219,9 +219,9 @@
         
         <!-- Modal Container -->
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div class="relative flex flex-col bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] min-h-0 overflow-hidden">
                 <!-- Modal Header -->
-                <div class="modal-header bg-white border-b border-gray-200 p-6">
+                <div class="modal-header flex-shrink-0 bg-white border-b border-gray-200 p-6">
                     <div class="flex justify-between items-start">
                         <div class="flex-1 min-w-0">
                             <h3 class="text-xl sm:text-2xl font-bold text-gray-900 truncate" id="modalTitle">
@@ -235,17 +235,21 @@
                     </div>
                 </div>
                 
-                <!-- Modal Body - Scrollable Content -->
-                <div class="modal-body overflow-y-auto p-6 max-h-[calc(90vh-140px)]">
+                <!-- Modal Body - Scrollable Content (flex-1 + min-h-0 keeps footer visible inside max-h) -->
+                <div class="modal-body flex-1 min-h-0 overflow-y-auto p-6">
                     <div class="space-y-4 sm:space-y-6">
                         <!-- Status Progress Bar -->
                         <div class="detail-section">
-                            <h4>
-                                <i class="fas fa-tasks"></i>
+                            <h4 id="reportStatusHeading">
+                                <i class="fas fa-route" aria-hidden="true"></i>
                                 Report Status
                             </h4>
-                            <div class="status-progress" id="statusProgress">
-                                <!-- Status steps will be dynamically added here -->
+                            <div class="status-tracker" aria-labelledby="reportStatusHeading">
+                                <div class="status-tracker-intro">
+                                    <span class="status-tracker-intro-label">Report lifecycle</span>
+                                    <p class="status-tracker-caption" id="statusProgressCaption"></p>
+                                </div>
+                                <div class="status-progress" id="statusProgress" role="list"></div>
                             </div>
                         </div>
 
@@ -355,14 +359,20 @@
                         <div id="modalResponseInfo" class="detail-section hidden">
                             <h4>
                                 <i class="fas fa-check-circle"></i>
-                                Response Information
+                                Resolution details
                             </h4>
                             <div class="bg-green-50 border border-green-200 rounded-lg p-4">
                                 <div class="flex items-start gap-3">
                                     <i class="fas fa-check text-green-500 mt-1 flex-shrink-0"></i>
-                                    <div class="min-w-0">
+                                    <div class="min-w-0 flex-1">
+                                        <p id="modalResolvedMeta" class="text-green-800 text-xs font-medium mb-2 hidden"></p>
                                         <p class="text-green-800 font-medium text-sm sm:text-base" id="modalResponseDetails"></p>
-                                        <p class="text-green-600 text-xs sm:text-sm mt-1">Thank you for helping keep our community safe!</p>
+                                        <p id="modalResolutionNotes" class="text-green-800 text-sm mt-2 whitespace-pre-wrap hidden"></p>
+                                        <div id="modalResolutionPhotoWrap" class="mt-3 hidden">
+                                            <p class="text-xs font-medium text-green-800 mb-1">Proof of response (tap to enlarge)</p>
+                                            <img id="modalResolutionPhoto" src="" alt="Resolution proof" class="max-h-48 rounded border border-green-200 cursor-pointer" />
+                                        </div>
+                                        <p class="text-green-600 text-xs sm:text-sm mt-2">Thank you for helping keep our community safe!</p>
                                     </div>
                                 </div>
                             </div>
@@ -371,7 +381,7 @@
                 </div>
                 
                 <!-- Modal Footer -->
-                <div class="modal-footer bg-gray-50 border-t border-gray-200 p-4">
+                <div class="modal-footer flex-shrink-0 bg-gray-50 border-t border-gray-200 p-4">
                     <button type="button" id="modalCloseBtn" class="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm sm:text-base">
                         Close Details
                     </button>

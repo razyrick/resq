@@ -71,6 +71,18 @@
             position: relative;
             overflow: hidden;
         }
+
+        /* Leaflet in admin incident modal: stable size + layer order */
+        .map-container #incidentMap {
+            min-height: 280px;
+            height: 280px;
+            width: 100%;
+            z-index: 1;
+        }
+
+        .map-container .leaflet-container {
+            font-family: inherit;
+        }
         
         .map-marker {
             position: absolute;
@@ -329,7 +341,7 @@
                 </div>
                 
                 <!-- Modal Body -->
-                <div class="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+                <div class="p-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
                     <div class="space-y-6">
                         <!-- Status and Severity -->
                         <div class="flex flex-wrap gap-2">
@@ -360,7 +372,7 @@
                                             </div>
                                         </div>
                                         <div class="map-container">
-                                            <div id="incidentMap" style="height: 250px; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
+                                            <div id="incidentMap" class="w-full rounded-lg border border-slate-200" style="height: 280px;"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -388,10 +400,27 @@
                                 </div>
 
                                 <!-- Incident Photo Section -->
-                                <div id="incidentPhotoSection" class="hidden">
+                                <div id="incidentPhotoSection">
                                     <h4 class="text-sm font-medium text-slate-700 mb-3">Incident Photo</h4>
                                     <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                                        <img id="incidentPhoto" src="" alt="Incident Photo" class="w-full h-64 object-cover rounded-lg">
+                                        <img id="incidentPhoto" src="" alt="Incident Photo" class="hidden w-full h-64 object-cover rounded-lg">
+                                        <div id="incidentPhotoEmpty" class="flex items-center justify-center h-64 text-slate-500 text-sm text-center rounded-lg border border-dashed border-slate-300 bg-slate-100/50">
+                                            No photo uploaded for this incident.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Resolution (barangay/agency resolve flow) -->
+                                <div id="adminResolutionSection" class="hidden">
+                                    <h4 class="text-sm font-medium text-slate-700 mb-3">Resolution details</h4>
+                                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                        <p id="adminResolutionMeta" class="text-xs font-medium text-green-800 mb-2 hidden"></p>
+                                        <p id="adminResolutionNotes" class="text-sm text-green-900 whitespace-pre-wrap hidden"></p>
+                                        <p id="adminResolutionEmptyHint" class="text-sm text-green-700 hidden">No resolution notes or proof photo were recorded.</p>
+                                        <div id="adminResolutionPhotoWrap" class="mt-3 hidden">
+                                            <p class="text-xs font-medium text-green-800 mb-1">Proof photo</p>
+                                            <img id="adminResolutionProofPhoto" src="" alt="Resolution proof" class="max-h-64 max-w-full rounded-lg border border-green-200 cursor-pointer object-contain" onclick="window.open(this.src, '_blank')" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -23,6 +23,17 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
+
+        .dispatcher-mini-map {
+            height: 6rem;
+            min-height: 6rem;
+            z-index: 0;
+        }
+
+        .dispatcher-mini-map .leaflet-container {
+            background: #f1f5f9;
+            font-family: inherit;
+        }
     </style>
 </head>
 <body class="bg-slate-50">
@@ -125,9 +136,11 @@
 
                 <!-- Active Incidents -->
                 <div class="bg-white rounded-xl border border-slate-200 p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-semibold text-slate-900">Active Incidents</h3>
-                        <a href="incidents.html" class="text-sm text-blue-600 hover:text-blue-700 font-medium">View All →</a>
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900">Active Incidents Today</h3>
+                        </div>
+                        <a href="incidents.html" class="text-sm text-blue-600 hover:text-blue-700 font-medium shrink-0">View All →</a>
                     </div>
                     <div class="space-y-4 max-h-96 overflow-y-auto" id="priorityIncidentsList">
                         <!-- Active incidents will be loaded dynamically -->

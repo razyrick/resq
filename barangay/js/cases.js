@@ -380,9 +380,9 @@ async function loadCases() {
 // Update statistics
 function updateStats(incidents) {
     const totalCount = currentPagination.total_items || incidents.length;
-    const pendingCount = incidents.filter(i => i.status === 'pending').length;
-    const activeCount = incidents.filter(i => i.status === 'ongoing').length;
-    const resolvedCount = incidents.filter(i => i.status === 'resolved').length;
+    const pendingCount = incidents.filter(i => normalizeIncidentStatusKey(i.status) === 'pending').length;
+    const activeCount = incidents.filter(i => normalizeIncidentStatusKey(i.status) === 'ongoing').length;
+    const resolvedCount = incidents.filter(i => normalizeIncidentStatusKey(i.status) === 'resolved').length;
 
     document.getElementById('totalCount').textContent = totalCount;
     document.getElementById('pendingCount').textContent = pendingCount;
@@ -485,8 +485,16 @@ function formatTimeAgo(dateString) {
     return date.toLocaleDateString();
 }
 
+function normalizeIncidentStatusKey(status) {
+    const s = String(status ?? '').trim().toLowerCase();
+    if (s === 'complete' || s === 'closed') return 'resolved';
+    return s;
+}
+
 // Create status progress bar
 function createStatusProgress(status) {
+    const raw = normalizeIncidentStatusKey(status);
+    const st = raw === 'dispatched' ? 'ongoing' : raw;
     const steps = [
         { id: 'pending', label: 'Pending', icon: 'fa-clock' },
         { id: 'ongoing', label: 'Ongoing', icon: 'fa-spinner' },
@@ -496,18 +504,23 @@ function createStatusProgress(status) {
     let html = '<div class="flex items-center justify-between w-full px-4">';
     
     steps.forEach((step, index) => {
-        const isActive = step.id === status;
+        const isActive = step.id === st;
         const isCompleted = 
-            (status === 'ongoing' && step.id === 'pending') ||
-            (status === 'resolved' && (step.id === 'pending' || step.id === 'ongoing'));
+            (st === 'ongoing' && step.id === 'pending') ||
+            (st === 'resolved' && (step.id === 'pending' || step.id === 'ongoing'));
 
         // Dot colors and styles
         let dotClass = "w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 ";
         let labelClass = "text-xs font-medium mt-1 ";
         
         if (isActive) {
-            dotClass += "bg-blue-600 text-white ring-4 ring-blue-100 scale-110";
-            labelClass += "text-blue-600 font-semibold";
+            if (st === 'resolved' && step.id === 'resolved') {
+                dotClass += "bg-green-600 text-white ring-4 ring-green-100 scale-110";
+                labelClass += "text-green-700 font-semibold";
+            } else {
+                dotClass += "bg-blue-600 text-white ring-4 ring-blue-100 scale-110";
+                labelClass += "text-blue-600 font-semibold";
+            }
         } else if (isCompleted) {
             dotClass += "bg-green-500 text-white";
             labelClass += "text-green-600 font-semibold";
@@ -580,6 +593,12 @@ function initializeMap(latitude, longitude, incidentType) {
         } else {
             console.warn('Invalid coordinates for map:', latitude, longitude);
         }
+
+        setTimeout(() => {
+            if (map) {
+                map.invalidateSize();
+            }
+        }, 250);
     } catch (error) {
         console.error('Error initializing map:', error);
         mapContainer.innerHTML = `
@@ -589,6 +608,12 @@ function initializeMap(latitude, longitude, incidentType) {
             </div>
         `;
     }
+}
+
+function hasValidResolutionPhoto(photo) {
+    if (photo === null || photo === undefined) return false;
+    const s = String(photo).trim();
+    return s !== '' && s !== 'null' && s !== 'undefined';
 }
 
 // Format date and time
@@ -643,9 +668,8 @@ async function escalateIncident(incidentId) {
     }).then(async (result) => {
         if (result.isConfirmed) {
             try {
-                // Update incident with dispatcher_id set to true (or actual dispatcher ID)
                 const response = await updateIncidentStatus(incidentId, {
-                    dispatcher_id: true // You might want to use actual dispatcher ID here
+                    dispatcher_id: BARANGAY_DISPATCHER_ESCALATION_PLACEHOLDER_ID
                 });
 
                 Swal.fire({
@@ -702,44 +726,79 @@ async function confirmAccept() {
 
 // Active Cases Functions
 async function resolveCase(caseId) {
-    Swal.fire({
-        title: 'Resolve Case?',
-        text: 'Are you sure you want to mark this case as resolved?',
+    const { isConfirmed, value } = await Swal.fire({
+        title: 'Resolve case',
+        customClass: {
+            popup: 'swal-resolve-case'
+        },
+        html: `
+            <div class="swal-resolve-fields w-full max-w-full box-border overflow-x-hidden text-left">
+                <p class="text-sm text-slate-600 mb-3">A proof photo is required. Resolution notes are optional.</p>
+                <label class="block text-xs font-medium text-slate-600 mb-1" for="swal-res-photo">Proof photo (required)</label>
+                <input type="file" id="swal-res-photo" accept="image/*" class="mb-3 rounded border border-slate-200 bg-white px-2 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm" />
+                <label class="block text-xs font-medium text-slate-600 mb-1" for="swal-res-notes">Resolution notes (optional)</label>
+                <textarea id="swal-res-notes" class="rounded border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400" rows="3" placeholder="What was done, units involved, etc."></textarea>
+            </div>
+        `,
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#2563eb',
+        confirmButtonColor: '#10b981',
         cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, resolve it',
-        cancelButtonText: 'Cancel'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            try {
-                // Update incident status to resolved
-                const response = await updateIncidentStatus(caseId, {
-                    status: 'resolved'
-                });
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Resolved!',
-                    text: `Case ${caseId} marked as resolved!`,
-                    confirmButtonColor: '#10b981',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-                
-                loadCases(); // Refresh the cases list
-                closeModal('detailsModal');
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Failed to resolve case: ' + error.message,
-                    confirmButtonColor: '#ef4444'
-                });
+        confirmButtonText: 'Submit resolution',
+        cancelButtonText: 'Cancel',
+        preConfirm: async () => {
+            const notesEl = document.getElementById('swal-res-notes');
+            const fileEl = document.getElementById('swal-res-photo');
+            const notes = notesEl ? notesEl.value.trim() : '';
+            let photoUrl = '';
+            if (!fileEl || !fileEl.files || !fileEl.files[0]) {
+                Swal.showValidationMessage('Please upload a proof photo.');
+                return false;
             }
+            if (typeof uploadResolutionImageToCloudinary !== 'function') {
+                Swal.showValidationMessage('Upload helper not loaded. Refresh the page.');
+                return false;
+            }
+            try {
+                photoUrl = await uploadResolutionImageToCloudinary(fileEl.files[0]);
+            } catch (err) {
+                Swal.showValidationMessage(err.message || 'Image upload failed');
+                return false;
+            }
+            return { photoUrl, notes };
         }
     });
+
+    if (!isConfirmed || !value) {
+        return;
+    }
+
+    try {
+        const payload = { status: 'resolved', resolution_photo: value.photoUrl };
+        if (value.notes) {
+            payload.resolution_notes = value.notes;
+        }
+        await updateIncidentStatus(caseId, payload);
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Resolved!',
+            text: `Case ${caseId} marked as resolved.`,
+            confirmButtonColor: '#10b981',
+            timer: 1500,
+            showConfirmButton: false
+        });
+
+        loadCases();
+        closeModal('detailsModal');
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to resolve case: ' + error.message,
+            confirmButtonColor: '#ef4444'
+        });
+    }
 }
 
 // Create case card HTML with incident type icons - FIXED VERSION
@@ -756,6 +815,7 @@ function createCaseCard(incident) {
     const statusColors = {
         pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
         ongoing: 'bg-blue-100 text-blue-700 border-blue-200',
+        dispatched: 'bg-orange-100 text-orange-700 border-orange-200',
         resolved: 'bg-green-100 text-green-700 border-green-200'
     };
 
@@ -763,14 +823,30 @@ function createCaseCard(incident) {
     const typeConfig = getIncidentTypeConfig(incident.incident_type);
     
     const severityClass = severityColors[incident.severity_level] || severityColors.medium;
-    const statusClass = statusColors[incident.status] || statusColors.pending;
+    const statusKey = normalizeIncidentStatusKey(incident.status);
+    const statusClass = statusColors[statusKey] || statusColors.pending;
 
     // Get reporter information
     const reporterName = getReporterName(incident);
     const reporterContact = getReporterContact(incident);
 
-    // Check if incident is escalated to dispatcher
-    const isEscalated = incident.dispatcher_id && incident.dispatcher_id !== 'null' && incident.dispatcher_id !== 'undefined' && incident.dispatcher_id !== '';
+    const dispatcherNorm = dispatcherIdNormalizedFromIncident(incident);
+    const claimableQueue = incidentIsClaimableTimedDispatcherEscalation(incident);
+    const lockedByDispatcher = incidentBarangayActionsLockedByDispatcher(incident);
+
+    const showAccept = claimableQueue || (statusKey === 'pending' && !dispatcherNorm);
+    const showEscalate = statusKey === 'pending' && !dispatcherNorm;
+    const showResolve = statusKey === 'ongoing' && !claimableQueue && !lockedByDispatcher;
+
+    const escalationBadgeHtml = claimableQueue ? `
+                                <span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
+                                    <i class="fas fa-clock mr-1"></i>Awaiting dispatcher — you can claim
+                                </span>
+                            ` : (dispatcherNorm !== '' ? `
+                                <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                                    <i class="fas fa-user-shield mr-1"></i>Escalated to Dispatcher
+                                </span>
+                            ` : '');
 
     card.innerHTML = `
         <div class="flex items-start gap-6">
@@ -783,12 +859,8 @@ function createCaseCard(incident) {
                         <div class="flex items-center gap-2 mb-1">
                             <h3 class="text-xl font-bold text-slate-900">${typeConfig.name} Incident</h3>
                             <span class="px-2 py-1 ${severityClass} text-xs font-medium rounded-full capitalize">${incident.severity_level}</span>
-                            <span class="px-2 py-1 ${statusClass} text-xs font-medium rounded-full capitalize">${incident.status}</span>
-                            ${isEscalated ? `
-                                <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
-                                    <i class="fas fa-user-shield mr-1"></i>Escalated to Dispatcher
-                                </span>
-                            ` : ''}
+                            <span class="px-2 py-1 ${statusClass} text-xs font-medium rounded-full capitalize">${statusKey}</span>
+                            ${escalationBadgeHtml ? escalationBadgeHtml : ''}
                         </div>
                         <p class="text-sm text-slate-500">ID: ${incident.incident_id || 'N/A'}</p>
                     </div>
@@ -813,22 +885,21 @@ function createCaseCard(incident) {
                 </div>
 
                 <div class="flex items-center gap-3">
-                    ${!isEscalated ? `
-                        ${incident.status === 'pending' ? `
+                    ${showAccept ? `
                             <button onclick="acceptIncident('${incident.incident_id}')" class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                                Accept & Respond
+                                ${claimableQueue ? 'Claim & Respond' : 'Accept & Respond'}
                             </button>
+                        ` : ''}
+                    ${showEscalate ? `
                             <button onclick="escalateIncident('${incident.incident_id}')" class="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors">
                                 Escalate to Dispatcher
                             </button>
                         ` : ''}
-                        
-                        ${incident.status === 'ongoing' ? `
+                    ${showResolve ? `
                             <button onclick="resolveCase('${incident.incident_id}')" class="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
                                 Mark Resolved
                             </button>
                         ` : ''}
-                    ` : ''}
                     
                     <button onclick="viewDetails('${incident.incident_id}')" class="px-6 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
                         View Details
@@ -886,12 +957,20 @@ function viewDetails(incidentId) {
         const detailPhoto = document.getElementById('detailPhoto');
         const detailAcceptBtn = document.getElementById('detailAcceptBtn');
         const detailResolveBtn = document.getElementById('detailResolveBtn');
+        const resolutionSection = document.getElementById('resolutionSection');
+        const resolutionMeta = document.getElementById('resolutionMeta');
+        const resolutionNotes = document.getElementById('resolutionNotes');
+        const resolutionEmptyHint = document.getElementById('resolutionEmptyHint');
+        const resolutionPhotoWrap = document.getElementById('resolutionPhotoWrap');
+        const resolutionProofPhoto = document.getElementById('resolutionProofPhoto');
 
         // Check if all required elements exist
         if (!detailTitle || !detailId || !detailType || !detailSeverityText || !detailStatusText || 
             !detailCreated || !detailUpdated || !detailUserId || !detailDescription || !detailCoordinates ||
             !detailReporterName || !detailReporterEmail || !detailReporterPhone || !statusProgress ||
-            !severityBadge || !statusBadge || !photoSection || !detailPhoto || !detailAcceptBtn || !detailResolveBtn) {
+            !severityBadge || !statusBadge || !photoSection || !detailPhoto || !detailAcceptBtn || !detailResolveBtn ||
+            !resolutionSection || !resolutionMeta || !resolutionNotes || !resolutionEmptyHint ||
+            !resolutionPhotoWrap || !resolutionProofPhoto) {
             throw new Error('One or more modal elements not found');
         }
 
@@ -921,6 +1000,9 @@ function viewDetails(incidentId) {
 
         // Update status progress
         statusProgress.innerHTML = createStatusProgress(incident.status);
+        const detailStatusKey = normalizeIncidentStatusKey(incident.status);
+        const dispatcherNormDetail = dispatcherIdNormalizedFromIncident(incident);
+        const claimableQueueDetail = incidentIsClaimableTimedDispatcherEscalation(incident);
 
         // Update severity and status badges
         const severityColors = {
@@ -932,34 +1014,36 @@ function viewDetails(incidentId) {
         const statusColors = {
             pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
             ongoing: 'bg-blue-100 text-blue-700 border-blue-200',
+            dispatched: 'bg-orange-100 text-orange-700 border-orange-200',
             resolved: 'bg-green-100 text-green-700 border-green-200'
         };
 
         severityBadge.className = `px-3 py-1 text-xs font-medium rounded-full ${severityColors[incident.severity_level] || severityColors.medium}`;
-        statusBadge.className = `px-3 py-1 text-xs font-medium rounded-full ${statusColors[incident.status] || statusColors.pending}`;
+        statusBadge.className = `px-3 py-1 text-xs font-medium rounded-full ${statusColors[detailStatusKey] || statusColors.pending}`;
 
         severityBadge.textContent = incident.severity_level || 'Medium';
-        statusBadge.textContent = incident.status || 'Pending';
+        statusBadge.textContent = detailStatusKey;
 
-        // Add escalated badge if incident has dispatcher_id
-        const isEscalated = incident.dispatcher_id && incident.dispatcher_id !== 'null' && incident.dispatcher_id !== 'undefined' && incident.dispatcher_id !== '';
-        if (isEscalated) {
-            const headerBadges = document.querySelector('#detailsModal .flex.items-start.justify-between .flex.gap-2');
-            if (headerBadges) {
-                // Remove any existing escalated badges
-                const existingBadges = headerBadges.querySelectorAll('span');
-                existingBadges.forEach((badge, index) => {
-                    if (index >= 2) { // Keep only severity and status badges
-                        badge.remove();
-                    }
-                });
-                
-                // Add escalated badge
-                const escalatedBadge = document.createElement('span');
-                escalatedBadge.className = 'px-3 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full';
-                escalatedBadge.innerHTML = '<i class="fas fa-user-shield mr-1"></i>Escalated to Dispatcher';
-                headerBadges.appendChild(escalatedBadge);
-            }
+        const headerBadgesContainer = document.querySelector('#detailsModal .flex.items-start.justify-between .flex.gap-2');
+        if (headerBadgesContainer) {
+            const existingBadges = headerBadgesContainer.querySelectorAll('span');
+            existingBadges.forEach((badge, index) => {
+                if (index >= 2) {
+                    badge.remove();
+                }
+            });
+        }
+
+        if (claimableQueueDetail && headerBadgesContainer) {
+            const claimBadge = document.createElement('span');
+            claimBadge.className = 'px-3 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full';
+            claimBadge.innerHTML = '<i class="fas fa-clock mr-1"></i>Awaiting dispatcher — you can claim';
+            headerBadgesContainer.appendChild(claimBadge);
+        } else if (dispatcherNormDetail !== '' && headerBadgesContainer) {
+            const escalatedBadge = document.createElement('span');
+            escalatedBadge.className = 'px-3 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full';
+            escalatedBadge.innerHTML = '<i class="fas fa-user-shield mr-1"></i>Escalated to Dispatcher';
+            headerBadgesContainer.appendChild(escalatedBadge);
         }
 
         // Handle photo
@@ -973,16 +1057,86 @@ function viewDetails(incidentId) {
             photoSection.classList.add('hidden');
         }
 
-        // Show appropriate action buttons - hide all if escalated
+        if (detailStatusKey === 'resolved') {
+            resolutionSection.classList.remove('hidden');
+
+            const roleRaw = incident.resolved_by_role;
+            const roleLabel = roleRaw === 'agency'
+                ? 'Agency'
+                : (roleRaw === 'barangay' ? 'Barangay' : (roleRaw ? String(roleRaw) : ''));
+            const resolvedAtStr = incident.resolved_at ? formatDateTime(incident.resolved_at) : '';
+
+            const metaParts = [];
+            if (roleLabel) {
+                metaParts.push(`Resolved by: ${roleLabel}`);
+            }
+            if (resolvedAtStr && resolvedAtStr !== 'Unknown') {
+                metaParts.push(`Completed: ${resolvedAtStr}`);
+            }
+            if (metaParts.length > 0) {
+                resolutionMeta.textContent = metaParts.join(' · ');
+                resolutionMeta.classList.remove('hidden');
+            } else {
+                resolutionMeta.textContent = '';
+                resolutionMeta.classList.add('hidden');
+            }
+
+            const notesTrimmed = incident.resolution_notes && String(incident.resolution_notes).trim()
+                ? String(incident.resolution_notes).trim()
+                : '';
+            if (notesTrimmed) {
+                resolutionNotes.textContent = notesTrimmed;
+                resolutionNotes.classList.remove('hidden');
+            } else {
+                resolutionNotes.textContent = '';
+                resolutionNotes.classList.add('hidden');
+            }
+
+            const proofUrl = hasValidResolutionPhoto(incident.resolution_photo)
+                ? String(incident.resolution_photo).trim()
+                : '';
+            if (proofUrl) {
+                resolutionProofPhoto.src = proofUrl;
+                resolutionPhotoWrap.classList.remove('hidden');
+                resolutionProofPhoto.onerror = function () {
+                    resolutionPhotoWrap.classList.add('hidden');
+                    resolutionProofPhoto.removeAttribute('src');
+                };
+            } else {
+                resolutionPhotoWrap.classList.add('hidden');
+                resolutionProofPhoto.removeAttribute('src');
+            }
+
+            const hasAnyDetail = metaParts.length > 0 || notesTrimmed || proofUrl;
+            if (hasAnyDetail) {
+                resolutionEmptyHint.classList.add('hidden');
+            } else {
+                resolutionEmptyHint.classList.remove('hidden');
+            }
+        } else {
+            resolutionSection.classList.add('hidden');
+            resolutionMeta.classList.add('hidden');
+            resolutionMeta.textContent = '';
+            resolutionNotes.classList.add('hidden');
+            resolutionNotes.textContent = '';
+            resolutionEmptyHint.classList.add('hidden');
+            resolutionPhotoWrap.classList.add('hidden');
+            resolutionProofPhoto.removeAttribute('src');
+        }
+
+        const showAcceptDetail = claimableQueueDetail || (detailStatusKey === 'pending' && !dispatcherNormDetail);
+        const showResolveDetail = detailStatusKey === 'ongoing'
+            && !claimableQueueDetail
+            && !incidentBarangayActionsLockedByDispatcher(incident);
+
         detailAcceptBtn.classList.add('hidden');
         detailResolveBtn.classList.add('hidden');
 
-        if (!isEscalated) {
-            if (incident.status === 'pending') {
-                detailAcceptBtn.classList.remove('hidden');
-            } else if (incident.status === 'ongoing') {
-                detailResolveBtn.classList.remove('hidden');
-            }
+        if (showAcceptDetail) {
+            detailAcceptBtn.classList.remove('hidden');
+            detailAcceptBtn.textContent = claimableQueueDetail ? 'Claim & Respond' : 'Accept & Respond';
+        } else if (showResolveDetail) {
+            detailResolveBtn.classList.remove('hidden');
         }
 
         // Initialize map

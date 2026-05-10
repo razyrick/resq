@@ -1,4 +1,5 @@
 const API_BASE_URL = 'https://greenyellow-hawk-206191.hostingersite.com';
+let incidentsDateScope = 'today';
 let userData = null;
 let currentPage = 1;
 let currentLimit = 20;
@@ -13,6 +14,8 @@ let totalPages = 0;
 let incidentMap = null;
 let incidentMarker = null;
 let currentIncident = null;
+let createPatientIncidentId = null;
+let dispatcherIncidentsListCache = [];
 
 function getStoredUserData() {
     const userDataStr = localStorage.getItem('userData');
@@ -58,6 +61,7 @@ async function fetchIncidents(page = 1, limit = 20) {
         if (currentFilters.severity) params.append('severity', currentFilters.severity);
         if (currentFilters.type) params.append('type', currentFilters.type);
         if (currentFilters.search) params.append('search', currentFilters.search);
+        params.append('date_scope', incidentsDateScope);
 
         const response = await fetch(`${API_BASE_URL}/dispatcher/incidents?${params}`, {
             method: 'GET',
@@ -326,7 +330,14 @@ function formatIncidentTypeName(type) {
         .join(' ');
 }
 
+function normalizeIncidentStatusKey(status) {
+    const s = String(status ?? '').trim().toLowerCase();
+    if (s === 'complete' || s === 'closed') return 'resolved';
+    return s;
+}
+
 function getStatusInfo(status) {
+    const key = normalizeIncidentStatusKey(status);
     const statuses = {
         'pending': { 
             text: 'Pending Dispatch', 
@@ -346,15 +357,23 @@ function getStatusInfo(status) {
         },
         'resolved': { 
             text: 'Resolved', 
-            color: 'green', 
+            color: '#16a34a', 
             bgColor: 'bg-green-100',
             textColor: 'text-green-800',
             borderColor: 'border-green-200',
             icon: 'fa-check-circle'
+        },
+        'dispatched': {
+            text: 'Dispatched',
+            color: 'orange',
+            bgColor: 'bg-orange-100',
+            textColor: 'text-orange-800',
+            borderColor: 'border-orange-200',
+            icon: 'fa-paper-plane'
         }
     };
     
-    return statuses[status] || statuses['pending'];
+    return statuses[key] || statuses['pending'];
 }
 
 function getSeverityInfo(severity) {
@@ -444,7 +463,7 @@ function updateStatistics(incidents) {
                 <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">Total</span>
             </div>
             <h3 class="text-3xl font-bold text-slate-900 mb-1">${totalCount}</h3>
-            <p class="text-sm text-slate-500">Active Incidents</p>
+            <p class="text-sm text-slate-500">${incidentsDateScope === 'today' ? 'Active Incidents Today (this page)' : 'Incidents shown (this page)'}</p>
         </div>
     `;
 }
@@ -454,12 +473,15 @@ function renderIncidents(incidents, pagination) {
     if (!container) return;
     
     if (incidents.length === 0) {
+        dispatcherIncidentsListCache = [];
         document.getElementById('emptyState').classList.remove('hidden');
         container.innerHTML = '';
         return;
     }
 
     document.getElementById('emptyState').classList.add('hidden');
+
+    dispatcherIncidentsListCache = incidents;
     
     let html = '';
     
@@ -604,6 +626,12 @@ function initIncidentMap(lat, lng) {
             .addTo(incidentMap)
             .bindPopup('Incident Location')
             .openPopup();
+
+        setTimeout(() => {
+            if (incidentMap) {
+                incidentMap.invalidateSize();
+            }
+        }, 250);
     } catch (error) {
         console.error('Error initializing map:', error);
     }
@@ -662,6 +690,8 @@ function showIncidentModal(incidentId) {
                 statusBadge.className = `status-badge ${statusInfo.bgColor} ${statusInfo.textColor} ${statusInfo.borderColor} border`;
                 statusBadge.innerHTML = `<i class="fas ${statusInfo.icon}"></i> ${statusInfo.text}`;
             }
+            renderIncidentPatientSummary(incident);
+            updateIncidentModalFooter(incident);
 
             const photoSection = document.getElementById('modalPhotoSection');
             const photoElement = document.getElementById('modalPhoto');
@@ -671,6 +701,17 @@ function showIncidentModal(incidentId) {
                 photoElement.src = incident.photo;
             } else {
                 photoSection.classList.add('hidden');
+            }
+
+            if (typeof applyResolutionDetailPanel === 'function') {
+                applyResolutionDetailPanel(incident, {
+                    section: document.getElementById('dispatcherIncidentResolutionWrap'),
+                    meta: document.getElementById('dispatcherIncidentResolutionMeta'),
+                    notes: document.getElementById('dispatcherIncidentResolutionNotes'),
+                    emptyHint: document.getElementById('dispatcherIncidentResolutionEmptyHint'),
+                    photoWrap: document.getElementById('dispatcherIncidentResolutionPhotoWrap'),
+                    proofImg: document.getElementById('dispatcherIncidentResolutionProofPhoto')
+                }, { formatResolvedAt: formatDate });
             }
 
             const lat = parseFloat(incident.latitude);
@@ -701,7 +742,7 @@ function showIncidentModal(incidentId) {
 // Add this function to fetch agencies
 async function fetchAgencies() {
     try {
-        const response = await fetch(`${API_BASE_URL}/dispatcher/agency?status=active&limit=100`, {
+        const response = await fetch(`${API_BASE_URL}/dispatcher/agency?status=active&limit=100&page=1`, {
             method: 'GET',
             headers: getHeaders()
         });
@@ -719,8 +760,263 @@ async function fetchAgencies() {
     }
 }
 
+/**
+ * Fills a select element with active agencies from GET /dispatcher/agency (routing is app-level; patients.agency_id has no DB FK).
+ * @param {HTMLSelectElement|null} selectEl
+ * @param {{ showUnits?: boolean }} opts
+ */
+async function loadDispatcherAgenciesForSelect(selectEl, opts = {}) {
+    const showUnits = Boolean(opts.showUnits);
+    if (!selectEl) return;
+
+    selectEl.disabled = true;
+    selectEl.innerHTML = '';
+    const loadingOpt = document.createElement('option');
+    loadingOpt.value = '';
+    loadingOpt.disabled = true;
+    loadingOpt.textContent = 'Loading agencies...';
+    selectEl.appendChild(loadingOpt);
+
+    const agenciesData = await fetchAgencies();
+
+    selectEl.innerHTML = '<option value="">Select an agency...</option>';
+    selectEl.disabled = false;
+
+    if (agenciesData.success && Array.isArray(agenciesData.data) && agenciesData.data.length > 0) {
+        agenciesData.data.forEach((agency) => {
+            const option = document.createElement('option');
+            option.value = agency.agency_id;
+            option.textContent = showUnits
+                ? `${agency.agency} (${agency.agency_type}) - ${agency.number_of_units} units available`
+                : `${agency.agency} (${agency.agency_type})`;
+            selectEl.appendChild(option);
+        });
+    } else {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No active agencies available';
+        option.disabled = true;
+        selectEl.appendChild(option);
+    }
+}
+
+function closeCreatePatientModal() {
+    const modal = document.getElementById('createPatientModal');
+    if (modal) modal.classList.add('hidden');
+    createPatientIncidentId = null;
+}
+
+async function openCreatePatientModal(options = {}) {
+    const modal = document.getElementById('createPatientModal');
+    const agencySelect = document.getElementById('createPatientAgencySelect');
+    if (!modal || !agencySelect) return;
+
+    const preselectedAgencyId =
+        options && typeof options === 'object' && 'preselectedAgencyId' in options
+            ? String(options.preselectedAgencyId || '')
+            : '';
+    createPatientIncidentId =
+        options && typeof options === 'object' && 'incidentId' in options
+            ? String(options.incidentId || '')
+            : '';
+    const fullNameInput = document.getElementById('createPatientFullName');
+    const reasonInput = document.getElementById('createPatientReason');
+    if (fullNameInput) fullNameInput.value = '';
+    if (reasonInput) reasonInput.value = '';
+
+    modal.classList.remove('hidden');
+
+    try {
+        await loadDispatcherAgenciesForSelect(agencySelect, { showUnits: false });
+        if (preselectedAgencyId) {
+            agencySelect.value = preselectedAgencyId;
+        }
+    } catch (error) {
+        console.error('Error loading agencies for patient modal:', error);
+        agencySelect.innerHTML = '';
+        const errOpt = document.createElement('option');
+        errOpt.value = '';
+        errOpt.textContent = 'Could not load agencies';
+        errOpt.disabled = true;
+        agencySelect.appendChild(errOpt);
+        agencySelect.disabled = true;
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Could not load agencies. Close and try again.',
+            confirmButtonColor: '#ef4444'
+        });
+    }
+}
+
+function updateIncidentModalFooter(incident) {
+    const deployBtn = document.getElementById('modalDeployMoreBtn');
+    const addPatientBtn = document.getElementById('modalAddPatientBtn');
+    const canDeploy = incident.status === 'pending' || incident.status === 'ongoing';
+    const hasPatient = Boolean(incident.patient_id || incident.linked_patient_id);
+
+    if (deployBtn) {
+        deployBtn.disabled = !canDeploy;
+        deployBtn.className = canDeploy
+            ? 'px-4 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2'
+            : 'px-4 py-3 bg-slate-200 text-slate-500 text-sm font-medium rounded-lg cursor-not-allowed flex items-center justify-center gap-2';
+        deployBtn.innerHTML = `<i class="fas ${canDeploy ? 'fa-paper-plane' : 'fa-check'}"></i> ${
+            canDeploy && incident.status === 'ongoing' ? 'Deploy More' : canDeploy ? 'Deploy Now' : 'Resolved'
+        }`;
+    }
+
+    if (addPatientBtn) {
+        addPatientBtn.disabled = hasPatient;
+        addPatientBtn.className = hasPatient
+            ? 'px-4 py-3 bg-slate-200 text-slate-500 text-sm font-medium rounded-lg cursor-not-allowed flex items-center justify-center gap-2'
+            : 'px-4 py-3 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2';
+        addPatientBtn.innerHTML = hasPatient
+            ? '<i class="fas fa-check"></i> Patient Added'
+            : '<i class="fas fa-user-injured"></i> Add Patient';
+    }
+}
+
+function renderIncidentPatientSummary(incident) {
+    const wrap = document.getElementById('modalPatientSummary');
+    if (!wrap) return;
+
+    const patientId = incident.patient_id || incident.linked_patient_id || '';
+    if (!patientId) {
+        wrap.classList.add('hidden');
+        return;
+    }
+
+    wrap.classList.remove('hidden');
+    document.getElementById('modalPatientName').textContent =
+        incident.linked_patient_name || incident.patient_full_name || 'Patient added';
+    document.getElementById('modalPatientReason').textContent =
+        incident.linked_patient_reason || incident.patient_reason || 'No reason provided';
+    document.getElementById('modalPatientId').textContent = patientId;
+}
+
+function applyCreatedPatientToIncident(patient) {
+    if (!currentIncident || !patient || !patient.patient_id) {
+        return;
+    }
+
+    const nextIncident = {
+        ...currentIncident,
+        patient_id: patient.patient_id,
+        linked_patient_id: patient.patient_id,
+        linked_patient_name: patient.full_name || '',
+        linked_patient_reason: patient.reason || '',
+        linked_patient_status: patient.status || 'ongoing'
+    };
+    currentIncident = nextIncident;
+
+    dispatcherIncidentsListCache = dispatcherIncidentsListCache.map((incident) => {
+        if (incident.incident_id !== nextIncident.incident_id) {
+            return incident;
+        }
+        return { ...incident, ...nextIncident };
+    });
+
+    renderIncidentPatientSummary(currentIncident);
+    updateIncidentModalFooter(currentIncident);
+}
+
+function openCreatePatientFromIncident() {
+    openCreatePatientModal({
+        preselectedAgencyId: currentIncident ? currentIncident.agency_id : '',
+        incidentId: currentIncident ? currentIncident.incident_id : ''
+    });
+}
+
+function deployCurrentIncidentFromModal() {
+    if (!currentIncident || !currentIncident.id || !currentIncident.incident_id) {
+        Swal.fire({
+            icon: 'error',
+            title: 'No incident selected',
+            text: 'Please reopen the incident details and try again.',
+            confirmButtonColor: '#ef4444'
+        });
+        return;
+    }
+
+    if (!(currentIncident.status === 'pending' || currentIncident.status === 'ongoing')) {
+        return;
+    }
+
+    deployToIncident(currentIncident.id, currentIncident.incident_id);
+}
+
+async function submitCreatePatient() {
+    const fullName = (document.getElementById('createPatientFullName')?.value || '').trim();
+    const reason = (document.getElementById('createPatientReason')?.value || '').trim();
+    const agencySelect = document.getElementById('createPatientAgencySelect');
+    const agencyId = agencySelect ? agencySelect.value : '';
+
+    if (!fullName || !reason || !agencyId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Missing fields',
+            text: 'Please enter name, reason, and select an agency.',
+            confirmButtonColor: '#ca8a04'
+        });
+        return;
+    }
+
+    try {
+        const payload = {
+            full_name: fullName,
+            reason: reason,
+            agency_id: agencyId
+        };
+
+        if (createPatientIncidentId) {
+            payload.incident_id = createPatientIncidentId;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/dispatcher/patients`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        if (data.success) {
+            applyCreatedPatientToIncident({
+                full_name: fullName,
+                reason: reason,
+                status: 'ongoing',
+                ...(data.data || {})
+            });
+            Swal.fire({
+                icon: 'success',
+                title: 'Patient created',
+                text: data.message || 'Saved to database.',
+                confirmButtonColor: '#059669'
+            });
+            closeCreatePatientModal();
+            createPatientIncidentId = null;
+        } else {
+            throw new Error(data.error || 'Failed to create patient');
+        }
+    } catch (error) {
+        console.error('createPatient:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Could not save',
+            text: error.message || 'Please try again.',
+            confirmButtonColor: '#ef4444'
+        });
+    }
+}
+
 async function deployToIncident(incidentId, incidentCode) {
-    currentIncident = { id: incidentId, incident_id: incidentCode };
+    const fromList = dispatcherIncidentsListCache.find((i) => String(i.id) === String(incidentId));
+    currentIncident = fromList
+        ? { ...fromList, id: incidentId, incident_id: incidentCode }
+        : { id: incidentId, incident_id: incidentCode };
     
     const deployModal = document.getElementById('deployModal');
     const deployIncidentId = document.getElementById('deployIncidentId');
@@ -729,36 +1025,31 @@ async function deployToIncident(incidentId, incidentCode) {
         deployIncidentId.textContent = `Incident #${incidentCode}`;
     }
     
-    // Clear previous options
     const agencySelect = document.getElementById('deployAgencySelect');
-    agencySelect.innerHTML = '<option value="">Select an agency...</option>';
-    
-    try {
-        // Load agencies
-        const agenciesData = await fetchAgencies();
-        
-        if (agenciesData.success && agenciesData.data.length > 0) {
-            // Populate agency dropdown
-            agenciesData.data.forEach(agency => {
-                const option = document.createElement('option');
-                option.value = agency.agency_id;
-                option.textContent = `${agency.agency} (${agency.agency_type}) - ${agency.number_of_units} units available`;
-                agencySelect.appendChild(option);
-            });
-        } else {
+    if (agencySelect) {
+        try {
+            await loadDispatcherAgenciesForSelect(agencySelect, { showUnits: true });
+        } catch (error) {
+            console.error('Error loading agencies:', error);
+            agencySelect.innerHTML = '';
             const option = document.createElement('option');
             option.value = '';
-            option.textContent = 'No active agencies available';
+            option.textContent = 'Error loading agencies';
             option.disabled = true;
             agencySelect.appendChild(option);
+            agencySelect.disabled = true;
         }
-    } catch (error) {
-        console.error('Error loading agencies:', error);
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = 'Error loading agencies';
-        option.disabled = true;
-        agencySelect.appendChild(option);
+    }
+
+    if (typeof applyResolutionDetailPanel === 'function') {
+        applyResolutionDetailPanel(currentIncident, {
+            section: document.getElementById('deployModalResolutionWrap'),
+            meta: document.getElementById('deployModalResolutionMeta'),
+            notes: document.getElementById('deployModalResolutionNotes'),
+            emptyHint: document.getElementById('deployModalResolutionEmptyHint'),
+            photoWrap: document.getElementById('deployModalResolutionPhotoWrap'),
+            proofImg: document.getElementById('deployModalResolutionProofPhoto')
+        }, { formatResolvedAt: formatDate });
     }
     
     if (deployModal) {
@@ -977,8 +1268,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeModal = document.getElementById('closeModal');
     const closeDeployModalBtn = document.getElementById('closeDeployModal');
     const openInMaps = document.getElementById('openInMaps');
-    const deployNowBtn = document.getElementById('deployNowBtn');
     const submitDeploymentBtn = document.getElementById('submitDeployment');
+    const modalAddPatientBtn = document.getElementById('modalAddPatientBtn');
+    const modalDeployMoreBtn = document.getElementById('modalDeployMoreBtn');
 
     [searchInput, severityFilter, typeFilter, statusFilter].forEach(element => {
         element.addEventListener('change', filterIncidents);
@@ -1018,6 +1310,37 @@ document.addEventListener('DOMContentLoaded', function() {
         submitDeploymentBtn.addEventListener('click', submitDeployment);
     }
 
+    if (modalAddPatientBtn) {
+        modalAddPatientBtn.addEventListener('click', openCreatePatientFromIncident);
+    }
+
+    if (modalDeployMoreBtn) {
+        modalDeployMoreBtn.addEventListener('click', deployCurrentIncidentFromModal);
+    }
+
+    const openCreatePatientBtn = document.getElementById('openCreatePatientBtn');
+    const closeCreatePatientModalBtn = document.getElementById('closeCreatePatientModal');
+    const submitCreatePatientBtn = document.getElementById('submitCreatePatient');
+    const createPatientModal = document.getElementById('createPatientModal');
+    const createPatientModalOverlay = document.getElementById('createPatientModalOverlay');
+
+    if (openCreatePatientBtn) {
+        openCreatePatientBtn.addEventListener('click', openCreatePatientModal);
+    }
+    if (closeCreatePatientModalBtn) {
+        closeCreatePatientModalBtn.addEventListener('click', closeCreatePatientModal);
+    }
+    if (submitCreatePatientBtn) {
+        submitCreatePatientBtn.addEventListener('click', submitCreatePatient);
+    }
+    if (createPatientModal) {
+        createPatientModal.addEventListener('click', (event) => {
+            if (event.target === createPatientModal || event.target === createPatientModalOverlay) {
+                closeCreatePatientModal();
+            }
+        });
+    }
+
     const incidentModal = document.getElementById('incidentModal');
     const deployModal = document.getElementById('deployModal');
     
@@ -1036,6 +1359,36 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    const scopeTodayBtn = document.getElementById('scopeTodayBtn');
+    const scopeAllBtn = document.getElementById('scopeAllBtn');
+    function refreshScopeButtons() {
+        if (!scopeTodayBtn || !scopeAllBtn) return;
+        if (incidentsDateScope === 'today') {
+            scopeTodayBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white shadow-sm';
+            scopeAllBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200';
+        } else {
+            scopeTodayBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200';
+            scopeAllBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white shadow-sm';
+        }
+    }
+    if (scopeTodayBtn) {
+        scopeTodayBtn.addEventListener('click', () => {
+            incidentsDateScope = 'today';
+            currentPage = 1;
+            refreshScopeButtons();
+            loadIncidents();
+        });
+    }
+    if (scopeAllBtn) {
+        scopeAllBtn.addEventListener('click', () => {
+            incidentsDateScope = 'all';
+            currentPage = 1;
+            refreshScopeButtons();
+            loadIncidents();
+        });
+    }
+    refreshScopeButtons();
 });
 
 document.addEventListener('click', function(e) {
