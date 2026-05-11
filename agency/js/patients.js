@@ -142,12 +142,20 @@ function renderPatients(rows, pagination) {
                 </button>
                 <p class="text-xs text-slate-500">${escapeHtml(p.linked_incident_type || 'Incident')}</p>`
             : '<span class="text-sm text-slate-400">Manual patient</span>';
-        const actions =
+        const canTransfer = st === 'incoming' || st === 'arrived';
+        const transferBtn = canTransfer
+            ? `<button type="button" data-pid="${escapeHtml(p.patient_id)}" class="transfer-patient-btn px-3 py-1 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700">Transfer</button>`
+            : '';
+        const primaryBtn =
             st === 'incoming'
                 ? `<button type="button" data-pid="${escapeHtml(p.patient_id)}" class="arrived-patient-btn px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Arrived?</button>`
                 : st === 'arrived' || st === 'ongoing'
                   ? `<button type="button" data-pid="${escapeHtml(p.patient_id)}" class="resolve-patient-btn px-3 py-1 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">Resolve</button>`
-                  : '<span class="text-xs text-slate-400">—</span>';
+                  : '';
+        const actions =
+            primaryBtn || transferBtn
+                ? `<div class="flex flex-wrap gap-2">${primaryBtn}${transferBtn}</div>`
+                : '<span class="text-xs text-slate-400">—</span>';
 
         tr.innerHTML = `
             <td class="px-6 py-4">
@@ -172,6 +180,12 @@ function renderPatients(rows, pagination) {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-pid');
             if (id) resolvePatient(id);
+        });
+    });
+    tbody.querySelectorAll('.transfer-patient-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-pid');
+            if (id) openTransferPatient(id);
         });
     });
     tbody.querySelectorAll('.open-linked-incident-btn').forEach((btn) => {
@@ -222,6 +236,107 @@ function applyPatientFilters() {
     activeFilters.status = (document.getElementById('statusFilter')?.value || '').trim();
     activeFilters.search = (document.getElementById('searchInput')?.value || '').trim();
     loadPatients(1);
+}
+
+async function loadAllActiveAgencies() {
+    const out = [];
+    let page = 1;
+    let hasNext = true;
+    const maxPages = 30;
+    while (hasNext && page <= maxPages) {
+        const params = new URLSearchParams({
+            page: String(page),
+            limit: '100',
+            status: 'active',
+        });
+        const response = await fetch(`${API_BASE_URL}/agency/agencies?${params}`, { headers: getHeaders() });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            break;
+        }
+        const rows = data.data || [];
+        out.push(...rows);
+        const pag = data.pagination || {};
+        hasNext = Boolean(pag.has_next);
+        page += 1;
+    }
+    return out;
+}
+
+async function openTransferPatient(patientId) {
+    try {
+        Swal.fire({
+            title: 'Loading agencies…',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            },
+        });
+        const list = await loadAllActiveAgencies();
+        Swal.close();
+
+        const stored = getStoredUserData();
+        const selfRaw = (stored?.user?.agency_id || '').trim();
+        const selfId = selfRaw.toLowerCase();
+        const inputOptions = {};
+        list.forEach((a) => {
+            const id = (a.agency_id || '').trim();
+            if (!id) return;
+            if (id.toLowerCase() === selfId) return;
+            inputOptions[id] = `${a.agency || id} (${id})`;
+        });
+        const keys = Object.keys(inputOptions);
+        if (keys.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'No agencies',
+                text: 'No other active agencies are available to transfer to.',
+            });
+            return;
+        }
+
+        const r = await Swal.fire({
+            title: 'Transfer patient',
+            html: '<p class="text-sm text-slate-600 text-left">The patient record and linked incident (if any) will be assigned to the agency you select. The receiving agency will see the patient as <strong>incoming</strong>.</p>',
+            input: 'select',
+            inputOptions,
+            inputPlaceholder: 'Select agency',
+            showCancelButton: true,
+            confirmButtonColor: '#d97706',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Transfer',
+            inputValidator: (v) => (v ? undefined : 'Choose an agency'),
+        });
+        if (!r.isConfirmed || !r.value) return;
+
+        const response = await fetch(`${API_BASE_URL}/agency/patients/transfer`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ patient_id: patientId, target_agency_id: String(r.value) }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        if (!data.success) {
+            throw new Error(data.error || 'Transfer failed');
+        }
+        const n = data.data?.incidents_updated ?? 0;
+        Swal.fire({
+            icon: 'success',
+            title: 'Transferred',
+            text:
+                n > 0
+                    ? `Patient moved; ${n} linked incident(s) reassigned to the new agency.`
+                    : 'Patient moved to the selected agency.',
+            timer: 2600,
+            showConfirmButton: true,
+        });
+        loadPatients(currentPage);
+    } catch (e) {
+        Swal.close();
+        Swal.fire({ icon: 'error', title: 'Transfer failed', text: e.message || 'Could not transfer' });
+    }
 }
 
 async function markPatientArrived(patientId) {
@@ -309,3 +424,4 @@ window.loadPatients = loadPatients;
 window.applyPatientFilters = applyPatientFilters;
 window.resolvePatient = resolvePatient;
 window.markPatientArrived = markPatientArrived;
+window.openTransferPatient = openTransferPatient;
