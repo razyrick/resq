@@ -174,16 +174,38 @@ function buildLocalRoutingSteps(incident) {
     return steps;
 }
 
-function fillModalDetailedSummarySection(incident) {
-    const section = document.getElementById('modalDetailedSummarySection');
-    if (!section) return;
+/** API may send an array; older proxies sometimes stringify JSON. */
+function coerceRoutingSteps(raw) {
+    if (raw == null) return [];
+    if (Array.isArray(raw)) {
+        return raw
+            .map((s) => {
+                if (!s || typeof s !== 'object') return null;
+                const title = s.title != null ? String(s.title) : '';
+                const detail = s.detail != null ? String(s.detail) : '';
+                if (!title && !detail) return null;
+                return { title: title || 'Update', detail: detail || '' };
+            })
+            .filter(Boolean);
+    }
+    if (typeof raw === 'string') {
+        try {
+            return coerceRoutingSteps(JSON.parse(raw));
+        } catch {
+            return [];
+        }
+    }
+    return [];
+}
 
-    const factsEl = section.querySelector('#modalSummaryKeyFacts')
-        || section.querySelector('.summary-key-facts');
-    const list = section.querySelector('#modalRoutingSteps')
-        || section.querySelector('ol.routing-steps-list');
-    const empty = section.querySelector('#modalRoutingEmpty');
-    if (!list || !empty) return;
+function fillModalDetailedSummarySection(incident) {
+    const factsEl = document.getElementById('modalSummaryKeyFacts');
+    const list = document.getElementById('modalRoutingSteps');
+    const empty = document.getElementById('modalRoutingEmpty');
+
+    if (!factsEl && !list) {
+        return;
+    }
 
     let statusInfo;
     let severityInfo;
@@ -226,15 +248,19 @@ function fillModalDetailedSummarySection(incident) {
         console.warn('Detailed summary: .summary-key-facts container not found; redeploy history.html with modalSummaryKeyFacts.');
     }
 
-    const apiSteps = Array.isArray(incident.routing_steps) ? incident.routing_steps : [];
+    if (!list) {
+        return;
+    }
+
+    const apiSteps = coerceRoutingSteps(incident.routing_steps);
     const steps = apiSteps.length > 0 ? apiSteps : buildLocalRoutingSteps(incident);
 
     if (steps.length === 0) {
         list.innerHTML = '';
-        empty.classList.remove('hidden');
+        if (empty) empty.classList.remove('hidden');
         return;
     }
-    empty.classList.add('hidden');
+    if (empty) empty.classList.add('hidden');
     list.innerHTML = steps.map((step) => `
         <li class="pl-0">
             <span class="routing-step-title">${escapeHtml(step.title)}</span>
@@ -703,7 +729,7 @@ function renderIncidents(incidents) {
 
 // Show incident details modal
 function showIncidentModal(incidentId) {
-    const incident = allIncidents.find(inc => inc.incident_id === incidentId);
+    const incident = allIncidents.find((inc) => String(inc.incident_id) === String(incidentId));
     if (!incident) {
         console.error('Incident not found:', incidentId);
         return;
@@ -758,8 +784,6 @@ function showIncidentModal(incidentId) {
     updateElement('modalSubmitted', formatDate(incident.created_at));
     updateElement('modalUpdated', formatDate(incident.updated_at));
     updateElement('modalDescription', incidentDescription(incident) || 'No description provided');
-
-    fillModalDetailedSummarySection(incident);
 
     // Initialize map if coordinates are valid
     if (!isNaN(lat) && !isNaN(lng)) {
@@ -851,12 +875,12 @@ function showIncidentModal(incidentId) {
     const modal = document.getElementById('incidentModal');
     if (modal) {
         modal.classList.remove('hidden');
-        // Scroll to top of modal content
         const modalBody = modal.querySelector('.modal-body');
         if (modalBody) {
             modalBody.scrollTop = 0;
         }
     }
+    fillModalDetailedSummarySection(incident);
 }
 
 // Update statistics
