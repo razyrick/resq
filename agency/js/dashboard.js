@@ -93,6 +93,7 @@ const apiRequest = async (endpoint, options = {}) => {
 async function loadDashboardStats(options = {}) {
     const silent = Boolean(options.silent);
     if (!silent) {
+        agencyDashboardPollSignature = '';
         showLoading();
     }
     try {

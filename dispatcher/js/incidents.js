@@ -1414,6 +1414,7 @@ document.addEventListener('DOMContentLoaded', function() {
         scopeTodayBtn.addEventListener('click', () => {
             incidentsDateScope = 'today';
             currentPage = 1;
+            dispatcherIncidentsListPollSignature = '';
             refreshScopeButtons();
             loadIncidents();
         });
@@ -1422,6 +1423,7 @@ document.addEventListener('DOMContentLoaded', function() {
         scopeAllBtn.addEventListener('click', () => {
             incidentsDateScope = 'all';
             currentPage = 1;
+            dispatcherIncidentsListPollSignature = '';
             refreshScopeButtons();
             loadIncidents();
         });

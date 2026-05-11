@@ -90,6 +90,7 @@ const apiRequest = async (endpoint, options = {}) => {
 async function loadDashboardData(options = {}) {
     const silent = Boolean(options.silent);
     if (!silent) {
+        barangayDashboardPollSignature = '';
         showLoading();
     }
     try {

@@ -823,6 +823,9 @@ function logout() {
 // Load dashboard data
 async function loadDashboardData(options = {}) {
     const silent = Boolean(options.silent);
+    if (!silent) {
+        dispatcherDashboardPollSignature = '';
+    }
     try {
         const data = await fetchDashboardStats();
 
