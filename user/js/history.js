@@ -118,20 +118,53 @@ function escapeHtml(text) {
         .replace(/'/g, '&#039;');
 }
 
-function fillModalRoutingSection(incident) {
-    const section = document.getElementById('modalRoutingSection');
+function dispatcherSummaryLine(incident) {
+    const d = incident.dispatcher;
+    if (!d || typeof d !== 'object') return '—';
+    if (d.escalation_queue) return 'Central dispatch queue (escalated)';
+    const name = d.name != null ? String(d.name).trim() : '';
+    if (name) return name;
+    if (d.dispatcher_id) return 'Dispatcher assigned';
+    return '—';
+}
+
+function fillModalDetailedSummarySection(incident) {
+    const section = document.getElementById('modalDetailedSummarySection');
+    const factsEl = document.getElementById('modalSummaryKeyFacts');
     const list = document.getElementById('modalRoutingSteps');
     const empty = document.getElementById('modalRoutingEmpty');
-    if (!section || !list || !empty) return;
+    if (!section || !factsEl || !list || !empty) return;
+
+    const status = getIncidentStatus(incident);
+    const statusInfo = getStatusInfo(status);
+    const severityInfo = getSeverityInfo(incident.severity_level);
+    const typeInfo = getIncidentTypeInfo(incident.incident_type);
+    const agency = agencyDisplayName(incident);
+    const dispatchLine = dispatcherSummaryLine(incident);
+
+    const rows = [
+        ['Report ID', incident.incident_id],
+        ['Incident type', typeInfo.text],
+        ['Status', statusInfo.text],
+        ['Severity', severityInfo.text],
+        ['Barangay', incident.baranggay?.baranggay_name || '—'],
+        ['Dispatch', dispatchLine],
+        ['Response agency', agency || '—'],
+    ];
+
+    factsEl.innerHTML = rows.map(([label, val]) => `
+        <div class="summary-fact-row">
+            <span class="summary-fact-label">${escapeHtml(label)}</span>
+            <span class="summary-fact-value">${escapeHtml(val)}</span>
+        </div>
+    `).join('');
 
     const steps = Array.isArray(incident.routing_steps) ? incident.routing_steps : [];
     if (steps.length === 0) {
-        section.classList.remove('hidden');
         list.innerHTML = '';
         empty.classList.remove('hidden');
         return;
     }
-    section.classList.remove('hidden');
     empty.classList.add('hidden');
     list.innerHTML = steps.map((step) => `
         <li class="pl-0">
@@ -650,7 +683,7 @@ function showIncidentModal(incidentId) {
     updateElement('modalUpdated', formatDate(incident.updated_at));
     updateElement('modalDescription', incidentDescription(incident) || 'No description provided');
 
-    fillModalRoutingSection(incident);
+    fillModalDetailedSummarySection(incident);
 
     // Initialize map if coordinates are valid
     if (!isNaN(lat) && !isNaN(lng)) {
