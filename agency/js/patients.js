@@ -129,7 +129,11 @@ function renderPatients(rows, pagination) {
         const badge =
             st === 'resolved'
                 ? 'bg-green-100 text-green-800'
-                : 'bg-amber-100 text-amber-800';
+                : st === 'incoming'
+                  ? 'bg-blue-100 text-blue-800'
+                  : st === 'arrived'
+                    ? 'bg-violet-100 text-violet-800'
+                    : 'bg-amber-100 text-amber-800';
         const reasonShort = (p.reason || '').length > 120 ? `${(p.reason || '').slice(0, 120)}…` : (p.reason || '—');
         const linkedIncidentId = p.linked_incident_id || '';
         const linkedIncident = linkedIncidentId
@@ -138,10 +142,12 @@ function renderPatients(rows, pagination) {
                 </button>
                 <p class="text-xs text-slate-500">${escapeHtml(p.linked_incident_type || 'Incident')}</p>`
             : '<span class="text-sm text-slate-400">Manual patient</span>';
-        const canResolve = st === 'ongoing';
-        const actions = canResolve
-            ? `<button type="button" data-pid="${escapeHtml(p.patient_id)}" class="resolve-patient-btn px-3 py-1 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">Resolve</button>`
-            : '<span class="text-xs text-slate-400">—</span>';
+        const actions =
+            st === 'incoming'
+                ? `<button type="button" data-pid="${escapeHtml(p.patient_id)}" class="arrived-patient-btn px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Arrived?</button>`
+                : st === 'arrived' || st === 'ongoing'
+                  ? `<button type="button" data-pid="${escapeHtml(p.patient_id)}" class="resolve-patient-btn px-3 py-1 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">Resolve</button>`
+                  : '<span class="text-xs text-slate-400">—</span>';
 
         tr.innerHTML = `
             <td class="px-6 py-4">
@@ -156,6 +162,12 @@ function renderPatients(rows, pagination) {
         tbody.appendChild(tr);
     });
 
+    tbody.querySelectorAll('.arrived-patient-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-pid');
+            if (id) markPatientArrived(id);
+        });
+    });
     tbody.querySelectorAll('.resolve-patient-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-pid');
@@ -212,6 +224,38 @@ function applyPatientFilters() {
     loadPatients(1);
 }
 
+async function markPatientArrived(patientId) {
+    const r = await Swal.fire({
+        title: 'Mark as arrived?',
+        text: 'Confirm the patient has reached your facility.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, arrived',
+    });
+    if (!r.isConfirmed) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/agency/patients`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify({ patient_id: patientId, status: 'arrived' }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        if (!data.success) {
+            throw new Error(data.error || 'Update failed');
+        }
+        Swal.fire({ icon: 'success', title: 'Marked arrived', timer: 1600, showConfirmButton: false });
+        loadPatients(currentPage);
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: e.message || 'Could not update' });
+    }
+}
+
 async function resolvePatient(patientId) {
     const r = await Swal.fire({
         title: 'Mark resolved?',
@@ -264,3 +308,4 @@ document.addEventListener('DOMContentLoaded', () => {
 window.loadPatients = loadPatients;
 window.applyPatientFilters = applyPatientFilters;
 window.resolvePatient = resolvePatient;
+window.markPatientArrived = markPatientArrived;
