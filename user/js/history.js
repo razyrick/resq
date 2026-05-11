@@ -121,45 +121,114 @@ function escapeHtml(text) {
 function dispatcherSummaryLine(incident) {
     const d = incident.dispatcher;
     if (!d || typeof d !== 'object') return '—';
-    if (d.escalation_queue) return 'Central dispatch queue (escalated)';
+    if (d.escalation_queue === true || String(d.dispatcher_id || '').trim() === '1') {
+        return 'Central dispatch queue (escalated)';
+    }
     const name = d.name != null ? String(d.name).trim() : '';
     if (name) return name;
     if (d.dispatcher_id) return 'Dispatcher assigned';
     return '—';
 }
 
+/** Same narrative as API routing_steps, built in-browser if the server omits it (older deploy). */
+function buildLocalRoutingSteps(incident) {
+    const steps = [];
+    const brgy = (incident.baranggay && incident.baranggay.baranggay_name)
+        ? String(incident.baranggay.baranggay_name).trim()
+        : '';
+    if (brgy) {
+        steps.push({
+            title: 'Routed to barangay',
+            detail: 'Your report was sent to ' + brgy + ' first so local responders can review it.',
+        });
+    }
+    const d = incident.dispatcher;
+    const dispatcherId = d && d.dispatcher_id != null ? String(d.dispatcher_id).trim() : '';
+    if (dispatcherId && dispatcherId !== '0') {
+        const isQueue = d.escalation_queue === true || dispatcherId === '1';
+        if (isQueue) {
+            steps.push({
+                title: 'Escalated to city / municipal dispatch',
+                detail: 'The barangay forwarded this case to the central dispatch queue for wider coordination.',
+            });
+        } else {
+            const name = (d.name && String(d.name).trim()) || '';
+            steps.push({
+                title: 'Dispatcher coordination',
+                detail: name
+                    ? ('Dispatcher coordinating routing: ' + name + '.')
+                    : 'A dispatcher is coordinating how this report is handled.',
+            });
+        }
+    }
+    const agency = agencyDisplayName(incident);
+    if (agency) {
+        const ag = incident.agency;
+        const type = (ag && ag.agency_type) ? String(ag.agency_type).trim() : '';
+        const suffix = type ? (' (' + type + ')') : '';
+        steps.push({
+            title: 'Response agency assigned',
+            detail: 'Dispatch assigned this report to ' + agency + suffix + '.',
+        });
+    }
+    return steps;
+}
+
 function fillModalDetailedSummarySection(incident) {
     const section = document.getElementById('modalDetailedSummarySection');
-    const factsEl = document.getElementById('modalSummaryKeyFacts');
-    const list = document.getElementById('modalRoutingSteps');
-    const empty = document.getElementById('modalRoutingEmpty');
-    if (!section || !factsEl || !list || !empty) return;
+    if (!section) return;
 
-    const status = getIncidentStatus(incident);
-    const statusInfo = getStatusInfo(status);
-    const severityInfo = getSeverityInfo(incident.severity_level);
-    const typeInfo = getIncidentTypeInfo(incident.incident_type);
+    const factsEl = section.querySelector('#modalSummaryKeyFacts')
+        || section.querySelector('.summary-key-facts');
+    const list = section.querySelector('#modalRoutingSteps')
+        || section.querySelector('ol.routing-steps-list');
+    const empty = section.querySelector('#modalRoutingEmpty');
+    if (!list || !empty) return;
+
+    let statusInfo;
+    let severityInfo;
+    let typeInfo;
+    try {
+        const status = getIncidentStatus(incident);
+        statusInfo = getStatusInfo(status);
+        severityInfo = getSeverityInfo(incident.severity_level);
+        typeInfo = getIncidentTypeInfo(incident.incident_type);
+    } catch (e) {
+        console.error('fillModalDetailedSummarySection:', e);
+        statusInfo = { text: String(incident.status || '—') };
+        severityInfo = { text: String(incident.severity_level || '—') };
+        typeInfo = { text: 'Incident' };
+    }
+
     const agency = agencyDisplayName(incident);
     const dispatchLine = dispatcherSummaryLine(incident);
 
     const rows = [
-        ['Report ID', incident.incident_id],
-        ['Incident type', typeInfo.text],
-        ['Status', statusInfo.text],
-        ['Severity', severityInfo.text],
-        ['Barangay', incident.baranggay?.baranggay_name || '—'],
+        ['Report ID', incident.incident_id != null ? String(incident.incident_id) : '—'],
+        ['Incident type', typeInfo.text || '—'],
+        ['Status', statusInfo.text || '—'],
+        ['Severity', severityInfo.text || '—'],
+        ['Barangay', (incident.baranggay && incident.baranggay.baranggay_name) ? String(incident.baranggay.baranggay_name) : '—'],
         ['Dispatch', dispatchLine],
         ['Response agency', agency || '—'],
     ];
 
-    factsEl.innerHTML = rows.map(([label, val]) => `
+    const rowsHtml = rows.map(([label, val]) => `
         <div class="summary-fact-row">
             <span class="summary-fact-label">${escapeHtml(label)}</span>
             <span class="summary-fact-value">${escapeHtml(val)}</span>
         </div>
     `).join('');
 
-    const steps = Array.isArray(incident.routing_steps) ? incident.routing_steps : [];
+    if (factsEl) {
+        factsEl.innerHTML = rowsHtml;
+    } else {
+        console.warn('Detailed summary: .summary-key-facts container not found; redeploy history.html with modalSummaryKeyFacts.');
+    }
+
+    const apiSteps = Array.isArray(incident.routing_steps) ? incident.routing_steps : [];
+    const steps = apiSteps.length > 0 ? apiSteps : buildLocalRoutingSteps(incident);
+
     if (steps.length === 0) {
         list.innerHTML = '';
         empty.classList.remove('hidden');
@@ -177,6 +246,7 @@ function fillModalDetailedSummarySection(incident) {
 // Get incident type icon and color
 // Get incident type icon and color
 function getIncidentTypeInfo(type) {
+    const raw = type === null || type === undefined ? '' : String(type).trim();
     const types = {
         'flood': { 
             icon: 'fa-water', 
@@ -237,7 +307,7 @@ function getIncidentTypeInfo(type) {
     };
     
     // If type is not provided, use 'other'
-    if (!type) {
+    if (!raw) {
         return types['other'] || { 
             icon: 'fa-ellipsis-h', 
             color: 'gray', 
@@ -248,7 +318,7 @@ function getIncidentTypeInfo(type) {
         };
     }
     
-    const typeKey = type.toLowerCase();
+    const typeKey = raw.toLowerCase();
     
     // Check if it's in our predefined types
     if (types[typeKey]) {
@@ -262,16 +332,15 @@ function getIncidentTypeInfo(type) {
         bgColor: 'bg-gray-100',
         textColor: 'text-gray-800',
         borderColor: 'border-gray-200',
-        text: formatIncidentTypeName(type)
+        text: formatIncidentTypeName(raw)
     };
 }
 
 // Helper function to format incident type name from snake_case to readable text
 function formatIncidentTypeName(type) {
-    if (!type) return 'Other Incident';
-    
-    // Convert snake_case to readable text
-    return type
+    if (type === null || type === undefined || type === '') return 'Other Incident';
+    const s = String(type);
+    return s
         .split('_')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
@@ -340,6 +409,13 @@ function getSeverityInfo(severity) {
             textColor: 'text-red-800',
             borderColor: 'border-red-200',
             icon: 'fa-arrow-up'
+        },
+        'critical': {
+            text: 'Critical Severity',
+            bgColor: 'bg-red-200',
+            textColor: 'text-red-900',
+            borderColor: 'border-red-300',
+            icon: 'fa-exclamation'
         }
     };
     
