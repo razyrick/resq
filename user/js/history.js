@@ -108,6 +108,39 @@ function agencyDisplayName(incident) {
     return String(raw).trim();
 }
 
+function escapeHtml(text) {
+    if (text == null) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function fillModalRoutingSection(incident) {
+    const section = document.getElementById('modalRoutingSection');
+    const list = document.getElementById('modalRoutingSteps');
+    const empty = document.getElementById('modalRoutingEmpty');
+    if (!section || !list || !empty) return;
+
+    const steps = Array.isArray(incident.routing_steps) ? incident.routing_steps : [];
+    if (steps.length === 0) {
+        section.classList.remove('hidden');
+        list.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    section.classList.remove('hidden');
+    empty.classList.add('hidden');
+    list.innerHTML = steps.map((step) => `
+        <li class="pl-0">
+            <span class="routing-step-title">${escapeHtml(step.title)}</span>
+            <p class="routing-step-detail">${escapeHtml(step.detail)}</p>
+        </li>
+    `).join('');
+}
+
 // Get incident type icon and color
 // Get incident type icon and color
 function getIncidentTypeInfo(type) {
@@ -616,6 +649,8 @@ function showIncidentModal(incidentId) {
     updateElement('modalSubmitted', formatDate(incident.created_at));
     updateElement('modalUpdated', formatDate(incident.updated_at));
     updateElement('modalDescription', incidentDescription(incident) || 'No description provided');
+
+    fillModalRoutingSection(incident);
 
     // Initialize map if coordinates are valid
     if (!isNaN(lat) && !isNaN(lng)) {

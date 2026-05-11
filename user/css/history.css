@@ -434,3 +434,27 @@ body {
         margin-bottom: 8px;
     }
 }
+
+.routing-steps-list {
+    list-style: decimal;
+    padding-left: 1.25rem;
+    margin: 0;
+}
+
+.routing-steps-list li {
+    padding-left: 0.25rem;
+}
+
+.routing-step-title {
+    font-weight: 600;
+    color: var(--dark);
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.routing-step-detail {
+    color: #4b5563;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin: 0;
+}
