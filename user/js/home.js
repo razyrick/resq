@@ -305,6 +305,7 @@ async function initializeMap() {
                                 <span class="text-xs text-gray-500 capitalize">${incident.severity_level} severity</span>
                             </div>
                             <p class="text-xs text-gray-500">${incident.baranggay?.baranggay_name || incident.baranggay?.baranggay || 'Unknown location'}</p>
+                            ${incident.agency && incident.agency.agency_name ? `<p class="text-xs text-gray-600 mt-1"><i class="fas fa-truck-medical mr-1"></i>${incident.agency.agency_name}</p>` : ''}
                             <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
                                 <p class="text-xs text-gray-400">${new Date(incident.created_at).toLocaleString()}</p>
                                 <button onclick="zoomToIncident(${lat}, ${lng})" class="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1">

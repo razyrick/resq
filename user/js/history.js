@@ -92,6 +92,22 @@ function formatDate(dateString) {
     });
 }
 
+/** Plain-text description for display and search (API may omit null). */
+function incidentDescription(incident) {
+    const raw = incident && incident.description;
+    if (raw === undefined || raw === null) return '';
+    return String(raw).trim();
+}
+
+/** Assigned response agency name when dispatch has set agency_id. */
+function agencyDisplayName(incident) {
+    const a = incident && incident.agency;
+    if (!a || typeof a !== 'object') return '';
+    const raw = a.agency_name;
+    if (raw === undefined || raw === null || String(raw).trim() === '') return '';
+    return String(raw).trim();
+}
+
 // Get incident type icon and color
 // Get incident type icon and color
 function getIncidentTypeInfo(type) {
@@ -425,9 +441,12 @@ function renderIncidents(incidents) {
             const resolutionProofUrl = hasValidPhoto(incident.resolution_photo)
                 ? String(incident.resolution_photo).trim()
                 : '';
+            const descLower = incidentDescription(incident).toLowerCase();
+            const agencyLower = agencyDisplayName(incident).toLowerCase();
+            const searchBlob = `${descLower} ${incident.incident_type.toLowerCase()} ${(incident.baranggay?.baranggay_name || '').toLowerCase()} ${agencyLower}`;
             
             html += `
-                <div class="report-card bg-white rounded-lg shadow-sm overflow-hidden border-l-4 ${statusInfo.borderColor}" data-status="${status}" data-search="${incident.description.toLowerCase()} ${incident.incident_type.toLowerCase()}">
+                <div class="report-card bg-white rounded-lg shadow-sm overflow-hidden border-l-4 ${statusInfo.borderColor}" data-status="${status}" data-search="${searchBlob.replace(/"/g, '')}">
                     <div class="p-4">
                         <div class="flex items-start justify-between mb-3">
                             <div class="min-w-0 flex-1">
@@ -442,7 +461,7 @@ function renderIncidents(incidents) {
                                         ${severityInfo.text}
                                     </span>
                                 </div>
-                                <p class="text-xs text-gray-500">${formatDate(incident.created_at)} ${incident.status === 'resolved' ? ` - Resolved by: ${incident.agency?.agency_name || `Brgy. ${incident.baranggay?.baranggay_name}` || 'Unknown'}` : ''}</p>
+                                <p class="text-xs text-gray-500">${formatDate(incident.created_at)} ${incident.status === 'resolved' ? ` - Resolved by: ${agencyDisplayName(incident) || (incident.baranggay?.baranggay_name ? 'Brgy. ' + incident.baranggay.baranggay_name : 'Unknown')}` : ''}</p>
                             </div>
                             <button class="text-blue-600 hover:text-blue-700 flex-shrink-0 ml-2">
                                 <i class="fas fa-chevron-right"></i>
@@ -455,7 +474,7 @@ function renderIncidents(incidents) {
                             </div>
                             <div class="min-w-0 flex-1">
                                 <h3 class="font-semibold text-gray-900 mb-1 truncate">${typeInfo.text} - ${incident.baranggay?.baranggay_name || 'Unknown Location'}</h3>
-                                <p class="text-sm text-gray-600 mb-2 line-clamp-2">${incident.description}</p>
+                                <p class="text-sm text-gray-600 mb-2 line-clamp-2">${incidentDescription(incident) || 'No description provided'}</p>
                                 
                                 ${hasPhoto ? `
                                     <div class="mb-2">
@@ -489,6 +508,12 @@ function renderIncidents(incidents) {
                                         <i class="fas fa-exclamation-triangle flex-shrink-0"></i>
                                         ${incident.severity_level.toUpperCase()} severity
                                     </span>
+                                    ${agencyDisplayName(incident) ? `
+                                    <span class="flex items-center gap-1 truncate" title="Assigned response agency">
+                                        <i class="fas fa-truck-medical flex-shrink-0"></i>
+                                        ${agencyDisplayName(incident)}
+                                    </span>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
@@ -584,9 +609,13 @@ function showIncidentModal(incidentId) {
     updateHTML('modalStatus', `<span class="status-badge ${statusInfo.bgColor} ${statusInfo.textColor} ${statusInfo.borderColor} border"><i class="fas ${statusInfo.icon}"></i> ${statusInfo.text}</span>`);
     updateElement('modalLocation', incident.baranggay?.baranggay_name || 'Unknown Location');
     updateElement('modalCoordinates', `${safeToFixed(incident.latitude)}, ${safeToFixed(incident.longitude)}`);
+    const ag = incident.agency && typeof incident.agency === 'object' ? incident.agency : null;
+    updateElement('modalAgency', agencyDisplayName(incident) || '—');
+    updateElement('modalAgencyType', (ag && ag.agency_type) ? String(ag.agency_type) : '—');
+    updateElement('modalAgencyPhone', (ag && ag.phone_number) ? String(ag.phone_number) : '—');
     updateElement('modalSubmitted', formatDate(incident.created_at));
     updateElement('modalUpdated', formatDate(incident.updated_at));
-    updateElement('modalDescription', incident.description);
+    updateElement('modalDescription', incidentDescription(incident) || 'No description provided');
 
     // Initialize map if coordinates are valid
     if (!isNaN(lat) && !isNaN(lng)) {
@@ -717,9 +746,10 @@ function filterIncidents(filter = 'all', searchTerm = '') {
     if (searchTerm) {
         const term = searchTerm.toLowerCase();
         filtered = filtered.filter(incident => 
-            incident.description.toLowerCase().includes(term) ||
+            incidentDescription(incident).toLowerCase().includes(term) ||
             incident.incident_type.toLowerCase().includes(term) ||
-            (incident.baranggay?.baranggay_name.toLowerCase() || '').includes(term)
+            (incident.baranggay?.baranggay_name || '').toLowerCase().includes(term) ||
+            agencyDisplayName(incident).toLowerCase().includes(term)
         );
     }
 
