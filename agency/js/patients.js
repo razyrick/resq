@@ -3,6 +3,26 @@ const API_BASE_URL = 'https://greenyellow-hawk-206191.hostingersite.com';
 let currentPage = 1;
 const pageLimit = 20;
 let activeFilters = { status: '', search: '' };
+let agencyPatientsListPollSignature = '';
+
+function fingerprintAgencyPatientsPage(rows, pagination) {
+    if (!Array.isArray(rows)) return '';
+    const pag = pagination && typeof pagination === 'object'
+        ? `ti:${pagination.total_items ?? ''}|cp:${pagination.current_page ?? ''}|pp:${pagination.per_page ?? ''}`
+        : '';
+    const parts = rows.map((p) =>
+        [
+            p.patient_id ?? '',
+            p.status ?? '',
+            p.updated_at ?? p.created_at ?? '',
+            (p.full_name ?? '').slice(0, 80),
+            (p.reason ?? '').slice(0, 80),
+            p.linked_incident_id ?? ''
+        ].join('\u001f')
+    );
+    parts.sort();
+    return pag + '\u0000' + parts.join('\u0000');
+}
 
 function getStoredUserData() {
     const userDataStr = localStorage.getItem('userData');
@@ -200,9 +220,12 @@ function renderPatients(rows, pagination) {
     renderPagination(pagination);
 }
 
-async function loadPatients(page = 1) {
+async function loadPatients(page = 1, options = {}) {
+    const silent = Boolean(options.silent);
     currentPage = page;
-    showLoading();
+    if (!silent) {
+        showLoading();
+    }
     try {
         const params = new URLSearchParams({
             page: String(page),
@@ -224,17 +247,26 @@ async function loadPatients(page = 1) {
             throw new Error(data.error || 'Failed to load patients');
         }
 
-        renderPatients(data.data || [], data.pagination || {});
+        const rows = data.data || [];
+        const nextSig = fingerprintAgencyPatientsPage(rows, data.pagination);
+        if (silent && nextSig === agencyPatientsListPollSignature) {
+            return;
+        }
+        agencyPatientsListPollSignature = nextSig;
+        renderPatients(rows, data.pagination || {});
         showContent();
     } catch (e) {
         console.error(e);
-        showError(e.message || 'Failed to load patients');
+        if (!silent) {
+            showError(e.message || 'Failed to load patients');
+        }
     }
 }
 
 function applyPatientFilters() {
     activeFilters.status = (document.getElementById('statusFilter')?.value || '').trim();
     activeFilters.search = (document.getElementById('searchInput')?.value || '').trim();
+    agencyPatientsListPollSignature = '';
     loadPatients(1);
 }
 
@@ -411,6 +443,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     loadPatients(1);
+
+    setInterval(function () {
+        loadPatients(currentPage, { silent: true });
+    }, 5000);
 
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {

@@ -221,6 +221,36 @@ let currentIncidentId = null;
 let map = null;
 let currentMarker = null;
 let searchTimeout = null;
+let barangayCasesListPollSignature = '';
+
+function fingerprintBarangayCasesPage(incidents, pagination) {
+    const filt = JSON.stringify({
+        status: currentFilters.status,
+        severity: currentFilters.severity,
+        type: currentFilters.type,
+        search: currentFilters.search,
+        page: currentFilters.page,
+        limit: currentFilters.limit
+    });
+    if (!Array.isArray(incidents)) return filt + '|';
+    const pag = pagination && typeof pagination === 'object'
+        ? `ti:${pagination.total_items ?? ''}|cp:${pagination.current_page ?? ''}|pp:${pagination.per_page ?? ''}`
+        : '';
+    const parts = incidents.map((inc) => {
+        const id = inc.incident_id ?? inc.id ?? '';
+        return [
+            id,
+            inc.status ?? '',
+            inc.updated_at ?? inc.created_at ?? '',
+            inc.severity_level ?? '',
+            String(inc.latitude ?? ''),
+            String(inc.longitude ?? ''),
+            (inc.description ?? '').slice(0, 120)
+        ].join('\u001f');
+    });
+    parts.sort();
+    return filt + '\u0000' + pag + '\u0000' + parts.join('\u0000');
+}
 
 // Get stored user data from localStorage
 function getStoredUserData() {
@@ -346,8 +376,11 @@ async function updateIncidentStatus(incidentId, updateData) {
 }
 
 // Load incidents from API
-async function loadCases() {
-    showLoading();
+async function loadCases(options) {
+    const silent = Boolean(options && options.silent);
+    if (!silent) {
+        showLoading();
+    }
     try {
         // Build query string from filters
         const queryParams = new URLSearchParams();
@@ -361,11 +394,17 @@ async function loadCases() {
         const data = await apiRequest(`/barangay/incidents?${queryParams.toString()}`);
         
         if (data.success && data.data) {
-            currentIncidents = data.data;
+            const rows = data.data;
+            const nextSig = fingerprintBarangayCasesPage(rows, data.pagination || {});
+            if (silent && nextSig === barangayCasesListPollSignature) {
+                return;
+            }
+            barangayCasesListPollSignature = nextSig;
+            currentIncidents = rows;
             currentPagination = data.pagination || {};
             
-            updateStats(data.data);
-            renderCases(data.data);
+            updateStats(rows);
+            renderCases(rows);
             updatePaginationControls();
             showContent();
         } else {
@@ -373,7 +412,9 @@ async function loadCases() {
         }
     } catch (error) {
         console.error('Error loading incidents:', error);
-        showError('Failed to load incidents: ' + error.message);
+        if (!silent) {
+            showError('Failed to load incidents: ' + error.message);
+        }
     }
 }
 
@@ -1378,4 +1419,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupFilters();
     initializeModals();
     loadCases();
+    setInterval(function () {
+        loadCases({ silent: true });
+    }, 5000);
 });

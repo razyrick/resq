@@ -6,6 +6,25 @@ let fullscreenMapInstance = null;
 let monthlyChart = null;
 /** @type {L.Map[]} */
 let dashboardMiniMaps = [];
+let dispatcherDashboardPollSignature = '';
+
+function fingerprintDispatcherDashboardBundle(statsPayload, sidebarRows) {
+    const st = statsPayload && statsPayload.stats ? statsPayload.stats : {};
+    const statPart = ['total_incidents', 'active_incidents', 'total_agencies', 'resolved_cases']
+        .map((k) => `${k}:${st[k] ?? ''}`)
+        .join('|');
+    const monthPart = JSON.stringify(statsPayload && statsPayload.monthly_incidents ? statsPayload.monthly_incidents : []);
+    const coordPart = (statsPayload && statsPayload.incident_coordinates ? statsPayload.incident_coordinates : [])
+        .map((c) => [c.incident_id, c.latitude, c.longitude, c.status, c.severity_level].join('\u001f'))
+        .sort()
+        .join('\u0000');
+    const side = (Array.isArray(sidebarRows) ? sidebarRows : []).map((inc) => {
+        const id = inc.incident_id ?? inc.id ?? '';
+        return [id, inc.status ?? '', inc.updated_at ?? inc.created_at ?? '', inc.severity_level ?? ''].join('\u001f');
+    });
+    side.sort();
+    return statPart + '\u0000' + monthPart + '\u0000' + coordPart + '\u0000' + side.join('\u0000');
+}
 
 // Get stored user data
 function getStoredUserData() {
@@ -802,7 +821,8 @@ function logout() {
 }
 
 // Load dashboard data
-async function loadDashboardData() {
+async function loadDashboardData(options = {}) {
+    const silent = Boolean(options.silent);
     try {
         const data = await fetchDashboardStats();
 
@@ -810,25 +830,33 @@ async function loadDashboardData() {
             throw new Error(data.error || 'Failed to load dashboard data');
         }
 
+        let sidebarList = [];
+        try {
+            const incidentsPayload = await fetchSidebarIncidentsSameAsActiveIncidentsPage();
+            sidebarList =
+                incidentsPayload.success && Array.isArray(incidentsPayload.data)
+                    ? incidentsPayload.data
+                    : [];
+        } catch (sidebarErr) {
+            console.error('Error loading sidebar incidents:', sidebarErr);
+            sidebarList = [];
+        }
+
+        const nextSig = fingerprintDispatcherDashboardBundle(data.data, sidebarList);
+        if (silent && nextSig === dispatcherDashboardPollSignature) {
+            return;
+        }
+        dispatcherDashboardPollSignature = nextSig;
+
         updateStatistics(data.data.stats);
         createMonthlyIncidentsChart(data.data.monthly_incidents);
         initDashboardMap(data.data.incident_coordinates);
 
-        try {
-            const incidentsPayload = await fetchSidebarIncidentsSameAsActiveIncidentsPage();
-            renderPriorityIncidents(
-                incidentsPayload.success && Array.isArray(incidentsPayload.data)
-                    ? incidentsPayload.data
-                    : []
-            );
-        } catch (sidebarErr) {
-            console.error('Error loading sidebar incidents:', sidebarErr);
-            renderPriorityIncidents([]);
-        }
+        renderPriorityIncidents(sidebarList);
     } catch (error) {
         console.error('Error loading dashboard data:', error);
-        // Show error state
-        document.getElementById('statsContainer').innerHTML = `
+        if (!silent) {
+            document.getElementById('statsContainer').innerHTML = `
             <div class="col-span-4 bg-white rounded-xl border border-slate-200 p-6 text-center">
                 <p class="text-red-600">Error loading dashboard data: ${error.message}</p>
                 <button onclick="loadDashboardData()" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
@@ -836,6 +864,7 @@ async function loadDashboardData() {
                 </button>
             </div>
         `;
+        }
     }
 }
 
@@ -843,6 +872,9 @@ async function loadDashboardData() {
 function initializePage() {
     loadUserData();
     loadDashboardData();
+    setInterval(function () {
+        loadDashboardData({ silent: true });
+    }, 5000);
 }
 
 // Initialize when DOM is loaded

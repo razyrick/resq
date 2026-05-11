@@ -16,6 +16,29 @@ let incidentMarker = null;
 let currentIncident = null;
 let createPatientIncidentId = null;
 let dispatcherIncidentsListCache = [];
+/** Last API list fingerprint; silent polls skip DOM updates when unchanged. */
+let dispatcherIncidentsListPollSignature = '';
+
+function fingerprintDispatcherIncidentPage(incidents, pagination) {
+    if (!Array.isArray(incidents)) return '';
+    const pag = pagination && typeof pagination === 'object'
+        ? `ti:${pagination.total_items ?? ''}|cp:${pagination.current_page ?? ''}|pp:${pagination.per_page ?? ''}`
+        : '';
+    const parts = incidents.map((inc) => {
+        const id = inc.incident_id ?? inc.id ?? '';
+        return [
+            id,
+            inc.status ?? '',
+            inc.updated_at ?? inc.created_at ?? '',
+            inc.severity_level ?? '',
+            String(inc.latitude ?? ''),
+            String(inc.longitude ?? ''),
+            (inc.description ?? '').slice(0, 120)
+        ].join('\u001f');
+    });
+    parts.sort();
+    return pag + '\u0000' + parts.join('\u0000');
+}
 
 function getStoredUserData() {
     const userDataStr = localStorage.getItem('userData');
@@ -1157,22 +1180,33 @@ function closeDeployModal() {
     }
 }
 
-async function loadIncidents() {
+async function loadIncidents(options) {
+    const silent = Boolean(options && options.silent);
     try {
-        showLoading();
-        
+        if (!silent) {
+            showLoading();
+        }
+
         const data = await fetchIncidents(currentPage, currentLimit);
-        
+
         if (data.success) {
-            updateStatistics(data.data);
-            renderIncidents(data.data, data.pagination);
+            const rows = data.data || [];
+            const nextSig = fingerprintDispatcherIncidentPage(rows, data.pagination);
+            if (silent && nextSig === dispatcherIncidentsListPollSignature) {
+                return;
+            }
+            dispatcherIncidentsListPollSignature = nextSig;
+            updateStatistics(rows);
+            renderIncidents(rows, data.pagination);
             showContent();
         } else {
             throw new Error(data.error || 'Failed to load incidents');
         }
     } catch (error) {
         console.error('Error loading incidents:', error);
-        showError(error.message);
+        if (!silent) {
+            showError(error.message);
+        }
     }
 }
 
@@ -1208,6 +1242,7 @@ function showError(message) {
 
 function filterIncidents() {
     currentPage = 1;
+    dispatcherIncidentsListPollSignature = '';
     currentFilters = {
         status: document.getElementById('statusFilter').value,
         severity: document.getElementById('severityFilter').value,
@@ -1222,6 +1257,9 @@ async function initializePage() {
     try {
         loadUserData();
         await loadIncidents();
+        setInterval(function () {
+            loadIncidents({ silent: true });
+        }, 5000);
     } catch (error) {
         console.error('Error initializing page:', error);
         showError(error.message);

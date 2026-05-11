@@ -3,6 +3,33 @@ const API_BASE_URL = 'https://greenyellow-hawk-206191.hostingersite.com';
 let dashboardMap = null;
 let fullscreenMapInstance = null;
 let currentStats = null;
+let barangayDashboardPollSignature = '';
+
+function fingerprintBarangayDashboardPayload(data) {
+    if (!data || typeof data !== 'object') return '';
+    const stats = data.stats || {};
+    const head = [
+        stats.total_incidents,
+        stats.pending_cases,
+        stats.ongoing_cases,
+        stats.resolved_cases,
+        stats.avg_severity_score
+    ].join('|');
+    const ibt = JSON.stringify(data.incidents_by_type || []);
+    const recent = (data.recent_incidents || []).map((i) =>
+        [
+            i.incident_id,
+            i.status,
+            i.severity_level,
+            String(i.latitude ?? ''),
+            String(i.longitude ?? ''),
+            i.updated_at || i.created_at || '',
+            (i.description || '').slice(0, 80)
+        ].join('\u001f')
+    );
+    recent.sort();
+    return head + '\u0000' + ibt + '\u0000' + recent.join('\u0000');
+}
 
 // Get stored user data from localStorage
 function getStoredUserData() {
@@ -60,8 +87,11 @@ const apiRequest = async (endpoint, options = {}) => {
 };
 
 // Load dashboard data
-async function loadDashboardData() {
-    showLoading();
+async function loadDashboardData(options = {}) {
+    const silent = Boolean(options.silent);
+    if (!silent) {
+        showLoading();
+    }
     try {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
@@ -79,6 +109,11 @@ async function loadDashboardData() {
         const response = await apiRequest(url);
         
         if (response.success && response.data) {
+            const nextSig = fingerprintBarangayDashboardPayload(response.data);
+            if (silent && nextSig === barangayDashboardPollSignature) {
+                return;
+            }
+            barangayDashboardPollSignature = nextSig;
             currentStats = response.data;
             updateDashboardUI();
             showContent();
@@ -92,7 +127,9 @@ async function loadDashboardData() {
         }
     } catch (error) {
         console.error('Error loading dashboard:', error);
-        showError('Failed to load dashboard: ' + error.message);
+        if (!silent) {
+            showError('Failed to load dashboard: ' + error.message);
+        }
     }
 }
 
@@ -521,4 +558,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load dashboard data
     loadDashboardData();
+    setInterval(function () {
+        loadDashboardData({ silent: true });
+    }, 5000);
 });

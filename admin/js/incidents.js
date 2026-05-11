@@ -11,6 +11,29 @@ let totalIncidents = 0;
 let totalPages = 0;
 let currentIncident = null;
 let allIncidents = []; // Store all incidents for quick access
+/** Silent poll: skip re-render when API payload matches this signature. */
+let adminIncidentsListPollSignature = '';
+
+function fingerprintAdminIncidentPage(incidents, pagination) {
+    if (!Array.isArray(incidents)) return '';
+    const pag = pagination && typeof pagination === 'object'
+        ? `ti:${pagination.total_items ?? ''}|cp:${pagination.current_page ?? ''}|pp:${pagination.per_page ?? ''}`
+        : '';
+    const parts = incidents.map((inc) => {
+        const id = inc.incident_id ?? inc.id ?? '';
+        return [
+            id,
+            inc.status ?? '',
+            inc.updated_at ?? inc.created_at ?? '',
+            inc.severity_level ?? '',
+            String(inc.latitude ?? ''),
+            String(inc.longitude ?? ''),
+            (inc.description ?? '').slice(0, 120)
+        ].join('\u001f');
+    });
+    parts.sort();
+    return pag + '\u0000' + parts.join('\u0000');
+}
 
 // Leaflet Map variables
 let incidentMap = null;
@@ -648,20 +671,31 @@ function closeIncidentModal() {
     currentIncident = null;
 }
 
-async function loadIncidents() {
+async function loadIncidents(options) {
+    const silent = Boolean(options && options.silent);
     try {
-        showLoading();
-        
+        if (!silent) {
+            showLoading();
+        }
+
         const data = await fetchIncidents(currentPage, currentLimit);
-        
+
         if (data.success) {
-            renderIncidents(data.data, data.pagination);
+            const rows = data.data || [];
+            const nextSig = fingerprintAdminIncidentPage(rows, data.pagination);
+            if (silent && nextSig === adminIncidentsListPollSignature) {
+                return;
+            }
+            adminIncidentsListPollSignature = nextSig;
+            renderIncidents(rows, data.pagination);
             showContent();
         } else {
             throw new Error(data.error || 'Failed to load incidents');
         }
     } catch (error) {
-        showError(error.message);
+        if (!silent) {
+            showError(error.message);
+        }
     }
 }
 
@@ -697,6 +731,7 @@ function showError(message) {
 
 function filterIncidents() {
     currentPage = 1;
+    adminIncidentsListPollSignature = '';
     currentFilters = {
         status: document.getElementById('statusFilter').value,
         severity: document.getElementById('severityFilter').value,
@@ -710,6 +745,9 @@ function filterIncidents() {
 async function initializePage() {
     try {
         await loadIncidents();
+        setInterval(function () {
+            loadIncidents({ silent: true });
+        }, 5000);
     } catch (error) {
         showError(error.message);
     }

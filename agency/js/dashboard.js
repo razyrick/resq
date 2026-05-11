@@ -3,6 +3,24 @@ const API_BASE_URL = 'https://greenyellow-hawk-206191.hostingersite.com';
 let dashboardMap = null;
 let fullscreenMapInstance = null;
 let currentStats = null;
+let agencyDashboardPollSignature = '';
+
+function fingerprintAgencyDashboardPayload(stats) {
+    if (!stats || typeof stats !== 'object') return '';
+    const live = (stats.live_incidents || []).map((i) =>
+        [i.incident_id, i.status, i.latitude, i.longitude, i.updated_at || i.created_at || ''].join('\u001f')
+    );
+    live.sort();
+    const head = [
+        stats.total_incidents,
+        stats.total_users,
+        stats.total_dispatchers,
+        stats.resolved_cases
+    ].join('|');
+    const rs = JSON.stringify(stats.reports_by_status || []);
+    const it = JSON.stringify(stats.incidents_by_type || []);
+    return head + '\u0000' + rs + '\u0000' + it + '\u0000' + live.join('\u0000');
+}
 
 // Get stored user data from localStorage
 function getStoredUserData() {
@@ -72,12 +90,20 @@ const apiRequest = async (endpoint, options = {}) => {
 };
 
 // Load dashboard stats
-async function loadDashboardStats() {
-    showLoading();
+async function loadDashboardStats(options = {}) {
+    const silent = Boolean(options.silent);
+    if (!silent) {
+        showLoading();
+    }
     try {
         const response = await apiRequest('/agency/dashboard');
         
         if (response.success) {
+            const nextSig = fingerprintAgencyDashboardPayload(response.data);
+            if (silent && nextSig === agencyDashboardPollSignature) {
+                return;
+            }
+            agencyDashboardPollSignature = nextSig;
             currentStats = response.data;
             renderDashboardStats(response.data);
             showContent();
@@ -87,7 +113,9 @@ async function loadDashboardStats() {
         }
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
-        showError('Failed to load dashboard: ' + error.message);
+        if (!silent) {
+            showError('Failed to load dashboard: ' + error.message);
+        }
     }
 }
 
@@ -307,4 +335,7 @@ function logout() {
 document.addEventListener('DOMContentLoaded', function() {
     updateUserInfo();
     loadDashboardStats();
+    setInterval(function () {
+        loadDashboardStats({ silent: true });
+    }, 5000);
 });

@@ -11,6 +11,25 @@ let currentIncident = null;
 let currentReportsData = [];
 let incidentMap = null;
 let incidentMarker = null;
+let agencyReportsListPollSignature = '';
+
+function fingerprintAgencyReportsPage(reports, pagination) {
+    if (!Array.isArray(reports)) return '';
+    const pag = pagination && typeof pagination === 'object'
+        ? `ti:${pagination.total_items ?? ''}|cp:${pagination.current_page ?? ''}|pp:${pagination.per_page ?? ''}`
+        : '';
+    const parts = reports.map((r) =>
+        [
+            r.incident_id ?? '',
+            r.status ?? '',
+            r.severity_level ?? '',
+            r.updated_at ?? r.created_at ?? '',
+            (r.photo ?? '').slice(0, 40)
+        ].join('\u001f')
+    );
+    parts.sort();
+    return pag + '\u0000' + parts.join('\u0000');
+}
 
 // Get stored user data from localStorage
 function getStoredUserData() {
@@ -123,8 +142,11 @@ function formatIncidentTypeName(type) {
 }
 
 // Load reports from API
-async function loadReports(page = 1, filters = {}) {
-    showLoading();
+async function loadReports(page = 1, filters = {}, options = {}) {
+    const silent = Boolean(options.silent);
+    if (!silent) {
+        showLoading();
+    }
     try {
         // Build query parameters
         const params = new URLSearchParams({
@@ -136,8 +158,15 @@ async function loadReports(page = 1, filters = {}) {
         const response = await apiRequest(`/agency/reports?${params}`);
         
         if (response.success) {
-            currentReportsData = response.data;
-            renderReports(response.data, response.pagination);
+            const rows = response.data || [];
+            const nextSig = fingerprintAgencyReportsPage(rows, response.pagination);
+            if (silent && nextSig === agencyReportsListPollSignature) {
+                return;
+            }
+            agencyReportsListPollSignature = nextSig;
+            currentPage = Number(page) || 1;
+            currentReportsData = rows;
+            renderReports(rows, response.pagination);
             showContent();
             openIncidentFromQuery();
         } else {
@@ -145,7 +174,9 @@ async function loadReports(page = 1, filters = {}) {
         }
     } catch (error) {
         console.error('Error loading reports:', error);
-        showError('Failed to load reports: ' + error.message);
+        if (!silent) {
+            showError('Failed to load reports: ' + error.message);
+        }
     }
 }
 
@@ -599,6 +630,7 @@ function applyFilters() {
         severity: '' // You can add severity filter if needed
     };
 
+    agencyReportsListPollSignature = '';
     loadReports(1, currentFilters);
 }
 
@@ -675,4 +707,7 @@ function updateUserInfo() {
 document.addEventListener('DOMContentLoaded', function() {
     updateUserInfo();
     loadReports(1, getInitialReportFilters());
+    setInterval(function () {
+        loadReports(currentPage, currentFilters, { silent: true });
+    }, 5000);
 });
